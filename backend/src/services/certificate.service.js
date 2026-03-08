@@ -37,7 +37,10 @@ const generateCertificatePDF = async (data) => {
               format: 'pdf'
             },
             (error, result) => {
-              if (error) rej(error);
+              if (error) {
+                console.error('Cloudinary upload error:', error);
+                rej(error);
+              }
               else res(result);
             }
           ).end(pdfBuffer);

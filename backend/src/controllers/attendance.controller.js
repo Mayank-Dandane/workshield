@@ -1,4 +1,3 @@
-const path = require('path');
 const Workshop = require('../models/Workshop');
 const AttendanceLog = require('../models/AttendanceLog');
 const { generateQRToken, generateQRImage, validateQRToken } = require('../services/qr.service');
@@ -308,20 +307,10 @@ const exportAttendanceExcel = async (req, res) => {
 
     // Generate Excel
 // Generate Excel
-const { filePath, fileName } = await generateAttendanceExcel(workshop, logs);
-// Send file as download
-res.setHeader(
-  'Content-Type',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-);
-res.setHeader(
-  'Content-Disposition',
-  `attachment; filename="${fileName}"`
-);
-res.sendFile(path.resolve(filePath), (err) => {
-  if (err) {
-    console.error('[exportAttendanceExcel] Send error:', err.message);
-  }
+const { cloudinaryUrl, fileName } = await generateAttendanceExcel(workshop, logs);
+return sendSuccess(res, 200, 'Excel generated', {
+  download_url: cloudinaryUrl,
+  fileName
 });
 
   } catch (err) {
