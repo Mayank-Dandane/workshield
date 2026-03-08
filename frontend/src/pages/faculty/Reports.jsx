@@ -208,9 +208,13 @@ export default function Reports() {
       const attRes = await getAttendanceByWorkshop(workshop._id);
       const logs = attRes.data.data.logs || [];
       const feedbackStats = analytics[workshop._id] || {};
+      console.log('workshop:', workshop);
+      console.log('logs:', logs);
+      console.log('feedbackStats:', feedbackStats);
       generateReportPDF(workshop, logs, feedbackStats);
       toast.success('Report downloaded!');
     } catch (err) {
+      console.error('Report error:', err);
       toast.error('Failed to generate report');
     } finally {
       setGenerating('');
