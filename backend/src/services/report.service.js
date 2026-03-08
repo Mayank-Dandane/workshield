@@ -1,11 +1,4 @@
 const PDFDocument = require('pdfkit');
-const cloudinary = require('cloudinary').v2;
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
 
 const generateReportPDF = async (data) => {
   const { workshop, attendanceStats, feedbackStats, studentLogs } = data;
@@ -18,26 +11,11 @@ const generateReportPDF = async (data) => {
 
     const buffers = [];
     doc.on('data', chunk => buffers.push(chunk));
-    doc.on('end', async () => {
+    doc.on('end', () => {
       try {
         const pdfBuffer = Buffer.concat(buffers);
-
-        const result = await new Promise((res, rej) => {
-          cloudinary.uploader.upload_stream(
-            {
-              resource_type: 'raw',
-              folder: 'workshield/reports',
-              public_id: `report_${workshop.workshop_id}_${Date.now()}`,
-              format: 'pdf'
-            },
-            (error, result) => {
-              if (error) rej(error);
-              else res(result);
-            }
-          ).end(Buffer.from(pdfBuffer))
-        });
-
-        resolve({ cloudinaryUrl: result.secure_url, fileName: `report_${workshop.workshop_id}.pdf` });
+        const base64 = pdfBuffer.toString('base64');
+        resolve({ base64, fileName: `report_${workshop.workshop_id}.pdf` });
       } catch (err) {
         reject(err);
       }
@@ -55,8 +33,8 @@ const generateReportPDF = async (data) => {
 
     let y = 100;
 
-    // ── Section helper ───────────────────────────────────────
     const sectionTitle = (title) => {
+      if (y > 700) { doc.addPage(); y = 50; }
       doc.fontSize(11).fillColor('#1a3a6b').font('Helvetica-Bold')
         .text(title, 50, y);
       y += 16;
@@ -65,11 +43,13 @@ const generateReportPDF = async (data) => {
     };
 
     const tableRow = (cols, widths, isHeader = false, isAlt = false) => {
+      if (y > 750) { doc.addPage(); y = 50; }
       const rowH = 20;
+      const totalW = widths.reduce((a, b) => a + b, 0);
       if (isHeader) {
-        doc.rect(50, y, widths.reduce((a, b) => a + b, 0), rowH).fill('#1a3a6b');
+        doc.rect(50, y, totalW, rowH).fill('#1a3a6b');
       } else if (isAlt) {
-        doc.rect(50, y, widths.reduce((a, b) => a + b, 0), rowH).fill('#f0f4ff');
+        doc.rect(50, y, totalW, rowH).fill('#f0f4ff');
       }
       let x = 50;
       cols.forEach((col, i) => {
@@ -79,14 +59,13 @@ const generateReportPDF = async (data) => {
           .text(String(col), x + 4, y + 5, { width: widths[i] - 8, ellipsis: true });
         x += widths[i];
       });
-      doc.rect(50, y, widths.reduce((a, b) => a + b, 0), rowH).lineWidth(0.3).strokeColor('#ddd').stroke();
+      doc.rect(50, y, totalW, rowH).lineWidth(0.3).strokeColor('#ddd').stroke();
       y += rowH;
     };
 
-    // ── Section 1: Workshop Details ──────────────────────────
+    // ── Section 1: Workshop Summary ──────────────────────────
     sectionTitle('SECTION 1 — WORKSHOP SUMMARY');
 
-    // Stats boxes
     const stats = [
       { value: attendanceStats.totalScanned, label: 'Total Scanned' },
       { value: attendanceStats.totalVerified, label: 'Verified Present' },
@@ -104,18 +83,17 @@ const generateReportPDF = async (data) => {
     });
     y += 56;
 
-    // Workshop details table
     const details = [
       ['Title', workshop.title],
       ['Topic', workshop.topic],
       ['Speaker', workshop.speaker],
       ['Date', new Date(workshop.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })],
-      ['Time', `${workshop.start_time} – ${workshop.end_time}`],
+      ['Time', `${workshop.start_time} - ${workshop.end_time}`],
       ['Min Duration', `${workshop.min_duration_minutes} minutes`],
       ['Random Check', workshop.random_check_enabled ? 'Enabled' : 'Disabled']
     ];
     details.forEach(([k, v], i) => {
-      if (isAlt = i % 2 !== 0) doc.rect(50, y, 445, 18).fill('#f7f9ff');
+      if (i % 2 !== 0) doc.rect(50, y, 445, 18).fill('#f7f9ff');
       doc.fontSize(8).fillColor('#333').font('Helvetica-Bold').text(k, 54, y + 4, { width: 120 });
       doc.fontSize(8).fillColor('#444').font('Helvetica').text(String(v), 180, y + 4, { width: 310 });
       y += 18;
@@ -136,9 +114,7 @@ const generateReportPDF = async (data) => {
     // ── Section 3: Feedback ──────────────────────────────────
     sectionTitle('SECTION 3 — FEEDBACK ANALYSIS');
     doc.fontSize(9).fillColor('#333').font('Helvetica')
-      .text(`Overall Average Rating: `, 50, y, { continued: true })
-      .font('Helvetica-Bold').fillColor('#1a3a6b')
-      .text(`${feedbackStats.overall_average} / 5`, { continued: false });
+      .text(`Overall Average Rating: ${feedbackStats.overall_average} / 5`, 50, y);
     y += 16;
 
     tableRow(['Question', 'Avg Score', 'Responses'], [280, 80, 85], true);
@@ -150,10 +126,10 @@ const generateReportPDF = async (data) => {
     // ── Section 4: Attendance List ───────────────────────────
     if (y > 650) { doc.addPage(); y = 50; }
     sectionTitle('SECTION 4 — FULL ATTENDANCE RECORD');
-    tableRow(['#', 'Name', 'Roll No', 'Year', 'Entry', 'Exit', 'Duration', 'Status'], [25, 110, 70, 40, 50, 50, 55, 55], true);
+    tableRow(['#', 'Name', 'Roll No', 'Year', 'Entry', 'Exit', 'Duration', 'Status'],
+      [25, 110, 70, 40, 50, 50, 55, 55], true);
 
     studentLogs.forEach((log, i) => {
-      if (y > 750) { doc.addPage(); y = 50; }
       tableRow([
         i + 1,
         log.student_id?.name || 'N/A',
@@ -162,14 +138,14 @@ const generateReportPDF = async (data) => {
         log.entry_time ? new Date(log.entry_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
         log.exit_time ? new Date(log.exit_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
         `${log.total_duration_minutes || 0} mins`,
-        log.verified_status ? '✓ Verified' : '✗ Not Verified'
+        log.verified_status ? 'Verified' : 'Not Verified'
       ], [25, 110, 70, 40, 50, 50, 55, 55], false, i % 2 !== 0);
     });
 
-    // ── Footer ───────────────────────────────────────────────
     y += 20;
     doc.fontSize(7).fillColor('#999').font('Helvetica')
-      .text(`Generated by WorkShield System | Workshop ID: ${workshop.workshop_id} | ${new Date().toLocaleString('en-IN')}`, 50, y, { align: 'center', width: W - 100 });
+      .text(`Generated by WorkShield System | Workshop ID: ${workshop.workshop_id} | ${new Date().toLocaleString('en-IN')}`,
+        50, y, { align: 'center', width: W - 100 });
 
     doc.end();
   });

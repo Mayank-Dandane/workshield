@@ -1,4 +1,4 @@
-const Workshop = require('../models/Workshop');
+  const Workshop = require('../models/Workshop');
 const AttendanceLog = require('../models/AttendanceLog');
 const { generateQRToken, generateQRImage, validateQRToken } = require('../services/qr.service');
 const { getDurationMinutes } = require('../utils/time.util');
@@ -307,9 +307,9 @@ const exportAttendanceExcel = async (req, res) => {
 
     // Generate Excel
 // Generate Excel
-const { cloudinaryUrl, fileName } = await generateAttendanceExcel(workshop, logs);
+const { base64, fileName } = await generateAttendanceExcel(workshop, logs);
 return sendSuccess(res, 200, 'Excel generated', {
-  download_url: cloudinaryUrl,
+  excel_base64: base64,
   fileName
 });
 

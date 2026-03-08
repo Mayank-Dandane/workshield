@@ -70,8 +70,7 @@ const generateWorkshopReport = async (req, res) => {
     const feedbackStats = calculateAnalytics(feedbacks);
 
     // ── Generate PDF ───────────────────────────────────────────
-    const { cloudinaryUrl, fileName } = await generateReportPDF({
-      workshop: {
+    const { base64, fileName } = await generateReportPDF({      workshop: {
         ...workshop.toObject(),
         department: workshop.created_by?.department || 'Computer Science'
       },
@@ -82,7 +81,7 @@ const generateWorkshopReport = async (req, res) => {
 
     // ── Send PDF ───────────────────────────────────────────────
     return sendSuccess(res, 200, 'Report generated', {
-      download_url: cloudinaryUrl,
+      pdf_base64: base64,
       fileName
     });
   } catch (err) {

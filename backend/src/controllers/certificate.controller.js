@@ -75,7 +75,7 @@ const generateCertificate = async (req, res) => {
     const verifyURL = `${process.env.CLIENT_URL}/verify/${certificateId}`;
 
     // ── Generate PDF & upload to Cloudinary ───────────────────
-    const { cloudinaryUrl, fileName } = await generateCertificatePDF({
+    const { base64, fileName } = await generateCertificatePDF({      
       studentName: student.name,
       rollNumber: student.roll_number,
       workshopTitle: workshop.title,
@@ -96,12 +96,13 @@ const generateCertificate = async (req, res) => {
       workshop_id,
       issue_date: new Date(issuedAt),
       verification_hash: verificationHash,
-      file_path: cloudinaryUrl   // store Cloudinary URL in file_path field
+      file_path: 'generated'   // store Cloudinary URL in file_path field
     });
 
     return sendSuccess(res, 201, '🎉 Certificate generated successfully!', {
       certificate_id: certificateId,
-      download_url: cloudinaryUrl,
+      pdf_base64: base64,
+      fileName,
       verification_hash: verificationHash,
       verify_url: verifyURL,
       issued_at: issuedAt

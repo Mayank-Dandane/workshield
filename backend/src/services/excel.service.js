@@ -1,5 +1,4 @@
 const ExcelJS = require('exceljs');
-const cloudinary = require('cloudinary').v2;
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -177,14 +176,14 @@ const generateAttendanceExcel = async (workshop, logs) => {
       {
         resource_type: 'raw',
         folder: 'workshield/excel',
-        public_id: `attendance_${workshop.workshop_id}_${Date.now()}`,
+        public_id: fileName,
         format: 'xlsx'
       },
       (error, result) => {
         if (error) reject(error);
         else resolve(result.secure_url);
       }
-    ).end(Buffer.from(buffer));
+    ).end(buffer);
   });
 
   return { cloudinaryUrl, fileName };

@@ -49,26 +49,37 @@ export default function Reports() {
     setGenerating(workshopId);
     try {
       const res = await generateReport(workshopId);
-      const url = res.data.data?.download_url;
-      if (url) window.open(url, '_blank');
-      else toast.error('Failed to get report URL');
-      toast.success('Report downloaded!');
+      const base64 = res.data.data?.pdf_base64;
+      const fileName = res.data.data?.fileName || `report_${workshopCode}.pdf`;
+      if (base64) {
+        const link = document.createElement('a');
+        link.href = `data:application/pdf;base64,${base64}`;
+        link.download = fileName;
+        link.click();
+        toast.success('Report downloaded!');
+      }
     } catch (err) {
       toast.error('Failed to generate report');
     } finally {
       setGenerating('');
     }
   };
-
+  
   const handleExcel = async (workshopId, workshopCode) => {
     setExporting(workshopId);
     try {
       const res = await exportAttendanceExcel(workshopId);
-      const url = res.data.data?.download_url;
-      if (url) window.open(url, '_blank');
-      else toast.error('Failed to get Excel URL');
+      const base64 = res.data.data?.excel_base64;
+      const fileName = res.data.data?.fileName || `attendance_${workshopCode}.xlsx`;
+      if (base64) {
+        const link = document.createElement('a');
+        link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${base64}`;
+        link.download = fileName;
+        link.click();
+        toast.success('Excel exported!');
+      }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Export failed — no verified students?');
+      toast.error(err.response?.data?.message || 'Export failed');
     } finally {
       setExporting('');
     }

@@ -63,16 +63,16 @@ export default function MyCertificates() {
   const handleDownload = async (certId) => {
     try {
       setDownloading(certId);
-      const token = localStorage.getItem('token');
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/certificates/download/${certId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const data = await res.json();
-      if (data.data?.download_url) {
-        window.open(data.data.download_url, '_blank');
-      } else {
-        toast.error('Download failed');
+      const res = await generateCertificate({ workshop_id: workshops.find(w => 
+        certificates.find(c => c.certificate_id === certId)?.workshop_id?._id === w._id
+      )?._id });
+      const base64 = res.data.data?.pdf_base64;
+      if (base64) {
+        const link = document.createElement('a');
+        link.href = `data:application/pdf;base64,${base64}`;
+        link.download = `certificate_${certId}.pdf`;
+        link.click();
+        toast.success('Certificate downloaded!');
       }
     } catch (err) {
       toast.error('Failed to download certificate');
@@ -80,7 +80,6 @@ export default function MyCertificates() {
       setDownloading('');
     }
   };
-
   if (loading) return (
     <StudentLayout>
       <div className="flex items-center justify-center h-64">
