@@ -1,4 +1,3 @@
-const path = require('path');
 const Workshop = require('../models/Workshop');
 const AttendanceLog = require('../models/AttendanceLog');
 const Feedback = require('../models/Feedback');
@@ -72,7 +71,7 @@ const generateWorkshopReport = async (req, res) => {
     const feedbackStats = calculateAnalytics(feedbacks);
 
     // ── Generate PDF ───────────────────────────────────────────
-    const { filePath, fileName } = await generateReportPDF({
+    const { cloudinaryUrl, fileName } = await generateReportPDF({
       workshop: {
         ...workshop.toObject(),
         department: workshop.created_by?.department || 'Computer Science'
@@ -83,15 +82,7 @@ const generateWorkshopReport = async (req, res) => {
     });
 
     // ── Send PDF ───────────────────────────────────────────────
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${fileName}"`
-    );
-
-    res.sendFile(path.resolve(filePath), (err) => {
-      if (err) console.error('[generateWorkshopReport] Send error:', err.message);
-    });
+    return res.redirect(cloudinaryUrl);
 
   } catch (err) {
     console.error('[generateWorkshopReport]', err.message);

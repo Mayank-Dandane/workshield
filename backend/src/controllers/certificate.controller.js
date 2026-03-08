@@ -1,4 +1,3 @@
-const path = require('path');
 const Certificate = require('../models/Certificate');
 const AttendanceLog = require('../models/AttendanceLog');
 const Feedback = require('../models/Feedback');
@@ -29,10 +28,7 @@ const generateCertificate = async (req, res) => {
     });
 
     if (!attendanceLog || !attendanceLog.verified_status) {
-      return sendError(
-        res, 403,
-        'Certificate requires verified attendance'
-      );
+      return sendError(res, 403, 'Certificate requires verified attendance');
     }
 
     // ── Check feedback submitted ───────────────────────────────
@@ -42,10 +38,7 @@ const generateCertificate = async (req, res) => {
     });
 
     if (!feedback) {
-      return sendError(
-        res, 403,
-        'Please submit feedback before downloading your certificate'
-      );
+      return sendError(res, 403, 'Please submit feedback before downloading your certificate');
     }
 
     // ── Check if certificate already exists ────────────────────
@@ -57,7 +50,7 @@ const generateCertificate = async (req, res) => {
     if (existing) {
       return sendSuccess(res, 200, 'Certificate already generated', {
         certificate_id: existing.certificate_id,
-        file_path: existing.file_path,
+        download_url: existing.file_path,
         already_exists: true
       });
     }
@@ -79,10 +72,10 @@ const generateCertificate = async (req, res) => {
       issuedAt
     );
 
-    const verifyURL = `${process.env.CERT_BASE_URL}/verify/${certificateId}`;
+    const verifyURL = `${process.env.CLIENT_URL}/verify/${certificateId}`;
 
-    // ── Generate PDF ───────────────────────────────────────────
-    const { filePath, fileName } = await generateCertificatePDF({
+    // ── Generate PDF & upload to Cloudinary ───────────────────
+    const { cloudinaryUrl, fileName } = await generateCertificatePDF({
       studentName: student.name,
       rollNumber: student.roll_number,
       workshopTitle: workshop.title,
@@ -97,17 +90,18 @@ const generateCertificate = async (req, res) => {
     });
 
     // ── Save certificate record ────────────────────────────────
-    const certificate = await Certificate.create({
+    await Certificate.create({
       certificate_id: certificateId,
       student_id: studentId,
       workshop_id,
       issue_date: new Date(issuedAt),
       verification_hash: verificationHash,
-      file_path: filePath
+      file_path: cloudinaryUrl   // store Cloudinary URL in file_path field
     });
 
     return sendSuccess(res, 201, '🎉 Certificate generated successfully!', {
       certificate_id: certificateId,
+      download_url: cloudinaryUrl,
       verification_hash: verificationHash,
       verify_url: verifyURL,
       issued_at: issuedAt
@@ -121,14 +115,14 @@ const generateCertificate = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────
 // @route   GET /api/certificates/download/:certificateId
-// @desc    Download certificate PDF
+// @desc    Redirect to Cloudinary PDF URL
 // @access  Student only
 // ─────────────────────────────────────────────────────────────────
 const downloadCertificate = async (req, res) => {
   try {
     const certificate = await Certificate.findOne({
       certificate_id: req.params.certificateId,
-      student_id: req.user._id   // student can only download own cert
+      student_id: req.user._id
     });
 
     if (!certificate) {
@@ -139,15 +133,8 @@ const downloadCertificate = async (req, res) => {
       return sendError(res, 400, 'This certificate has been invalidated');
     }
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="certificate_${certificate.certificate_id}.pdf"`
-    );
-
-    res.sendFile(path.resolve(certificate.file_path), (err) => {
-      if (err) console.error('[downloadCertificate]', err.message);
-    });
+    // Redirect to Cloudinary URL
+    return res.redirect(certificate.file_path);
 
   } catch (err) {
     console.error('[downloadCertificate]', err.message);
@@ -158,7 +145,7 @@ const downloadCertificate = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────
 // @route   GET /api/certificates/verify/:certificateId
 // @desc    Public certificate verification
-// @access  Public (no login needed)
+// @access  Public
 // ─────────────────────────────────────────────────────────────────
 const verifyCertificate = async (req, res) => {
   try {
