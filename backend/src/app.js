@@ -17,6 +17,7 @@ const adminRoutes = require('./routes/admin.routes');
 const { errorHandler } = require('./utils/response.util');
 
 const app = express();
+app.set('etag', false);
 
 // ─── Security Middleware ───────────────────────────────────────
 app.use(cors({
