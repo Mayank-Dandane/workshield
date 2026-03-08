@@ -70,7 +70,8 @@ const generateWorkshopReport = async (req, res) => {
     const feedbackStats = calculateAnalytics(feedbacks);
 
     // ── Generate PDF ───────────────────────────────────────────
-    const { base64, fileName } = await generateReportPDF({      workshop: {
+    const { base64, fileName } = await generateReportPDF({
+      workshop: {
         ...workshop.toObject(),
         department: workshop.created_by?.department || 'Computer Science'
       },
@@ -78,6 +79,7 @@ const generateWorkshopReport = async (req, res) => {
       feedbackStats,
       studentLogs: allLogs
     });
+    console.log('[report] base64 length:', base64?.length, 'fileName:', fileName);
 
     // ── Send PDF ───────────────────────────────────────────────
     return sendSuccess(res, 200, 'Report generated', {
