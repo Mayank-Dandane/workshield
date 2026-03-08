@@ -1,106 +1,95 @@
 const PDFDocument = require('pdfkit');
 
-/**
- * Generate certificate PDF and return as base64
- */
 const generateCertificatePDF = async (data) => {
-  const {
-    studentName, rollNumber, workshopTitle,
-    workshopTopic, speaker, date,
-    certificateId, verifyURL, department
-  } = data;
+  const { studentName, rollNumber, workshopTitle, workshopTopic, speaker, date, certificateId, verifyURL, department } = data;
 
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({
-      layout: 'landscape',
-      size: 'A4',
-      margins: { top: 40, bottom: 40, left: 50, right: 50 }
-    });
+    try {
+      const doc = new PDFDocument({ layout: 'landscape', size: 'A4', margin: 40 });
+      const buffers = [];
 
-    const buffers = [];
-    doc.on('data', chunk => buffers.push(chunk));
-    doc.on('end', () => {
-      try {
+      doc.on('data', chunk => buffers.push(chunk));
+      doc.on('error', reject);
+      doc.on('end', () => {
         const pdfBuffer = Buffer.concat(buffers);
-        const base64 = pdfBuffer.toString('base64');
-        resolve({ base64, fileName: `certificate_${certificateId}.pdf` });
-      } catch (err) {
-        reject(err);
-      }
-    });
-    doc.on('error', reject);
+        resolve({
+          base64: pdfBuffer.toString('base64'),
+          fileName: `certificate_${certificateId}.pdf`
+        });
+      });
 
-    const W = doc.page.width;
-    const H = doc.page.height;
+      const W = doc.page.width;
+      const H = doc.page.height;
 
-    // ── Border ──────────────────────────────────────────────
-    doc.rect(20, 20, W - 40, H - 40).lineWidth(8).strokeColor('#1a3a6b').stroke();
-    doc.rect(28, 28, W - 56, H - 56).lineWidth(2).strokeColor('#c9a84c').stroke();
+      // Border
+      doc.rect(15, 15, W - 30, H - 30).lineWidth(6).strokeColor('#1a3a6b').stroke();
+      doc.rect(22, 22, W - 44, H - 44).lineWidth(1.5).strokeColor('#c9a84c').stroke();
 
-    // ── Header ──────────────────────────────────────────────
-    doc.fontSize(13).fillColor('#1a3a6b').font('Helvetica-Bold')
-      .text(department.toUpperCase(), 0, 45, { align: 'center', characterSpacing: 2 });
+      // Header
+      doc.fontSize(14).fillColor('#1a3a6b').font('Helvetica-Bold')
+        .text(department.toUpperCase(), 0, 42, { align: 'center', width: W });
+      doc.fontSize(10).fillColor('#666').font('Helvetica')
+        .text("JSPM's RSCOE — Department Workshop Series", 0, 60, { align: 'center', width: W });
+      doc.moveTo(60, 78).lineTo(W - 60, 78).lineWidth(1).strokeColor('#1a3a6b').stroke();
 
-    doc.fontSize(10).fillColor('#666').font('Helvetica')
-      .text('Department Workshop Series', 0, 62, { align: 'center' });
+      // Title
+      doc.fontSize(32).fillColor('#c9a84c').font('Helvetica-Bold')
+        .text('CERTIFICATE', 0, 88, { align: 'center', width: W });
+      doc.fontSize(11).fillColor('#555').font('Helvetica')
+        .text('OF PARTICIPATION', 0, 128, { align: 'center', width: W });
 
-    doc.moveTo(50, 80).lineTo(W - 50, 80).lineWidth(1.5).strokeColor('#1a3a6b').stroke();
+      doc.fontSize(14).fillColor('#c9a84c')
+        .text('* * *', 0, 148, { align: 'center', width: W });
 
-    // ── Title ────────────────────────────────────────────────
-    doc.fontSize(36).fillColor('#c9a84c').font('Helvetica-Bold')
-      .text('CERTIFICATE', 0, 90, { align: 'center', characterSpacing: 4 });
+      // Body
+      doc.fontSize(10).fillColor('#555').font('Helvetica')
+        .text('THIS IS TO CERTIFY THAT', 0, 170, { align: 'center', width: W });
 
-    doc.fontSize(12).fillColor('#555').font('Helvetica')
-      .text('OF PARTICIPATION', 0, 132, { align: 'center', characterSpacing: 3 });
+      doc.fontSize(26).fillColor('#1a3a6b').font('Helvetica-Bold')
+        .text(studentName, 0, 188, { align: 'center', width: W });
 
-    // ── Stars ────────────────────────────────────────────────
-    doc.fontSize(16).fillColor('#c9a84c')
-      .text('*  *  *', 0, 152, { align: 'center' });
+      // Underline
+      const nameW = doc.widthOfString(studentName, { fontSize: 26 });
+      const nameX = (W - nameW) / 2;
+      doc.moveTo(nameX - 15, 222).lineTo(nameX + nameW + 15, 222)
+        .lineWidth(1.5).strokeColor('#c9a84c').stroke();
 
-    // ── Body ─────────────────────────────────────────────────
-    doc.fontSize(11).fillColor('#555').font('Helvetica')
-      .text('THIS IS TO CERTIFY THAT', 0, 178, { align: 'center', characterSpacing: 1 });
+      doc.fontSize(9).fillColor('#777').font('Helvetica')
+        .text(`Roll No: ${rollNumber}`, 0, 228, { align: 'center', width: W });
 
-    doc.fontSize(28).fillColor('#1a3a6b').font('Helvetica-Bold')
-      .text(studentName, 0, 196, { align: 'center' });
+      doc.fontSize(10).fillColor('#444').font('Helvetica')
+        .text('has successfully participated in the workshop', 0, 248, { align: 'center', width: W });
 
-    const nameWidth = doc.widthOfString(studentName, { fontSize: 28 });
-    const nameX = (W - nameWidth) / 2;
-    doc.moveTo(nameX - 20, 232).lineTo(nameX + nameWidth + 20, 232)
-      .lineWidth(1.5).strokeColor('#c9a84c').stroke();
+      doc.fontSize(13).fillColor('#1a3a6b').font('Helvetica-BoldOblique')
+        .text(`"${workshopTitle}"`, 0, 266, { align: 'center', width: W });
 
-    doc.fontSize(9).fillColor('#777').font('Helvetica')
-      .text(`Roll No: ${rollNumber}`, 0, 238, { align: 'center', characterSpacing: 1 });
+      doc.fontSize(10).fillColor('#444').font('Helvetica')
+        .text(`Topic: ${workshopTopic}`, 0, 286, { align: 'center', width: W });
 
-    doc.fontSize(11).fillColor('#444').font('Helvetica')
-      .text('has successfully participated in the workshop', 0, 256, { align: 'center' });
+      doc.fontSize(10).fillColor('#666').font('Helvetica')
+        .text(`Conducted by ${speaker}   |   Date: ${date}`, 0, 304, { align: 'center', width: W });
 
-    doc.fontSize(14).fillColor('#1a3a6b').font('Helvetica-BoldOblique')
-      .text(`"${workshopTitle}"`, 0, 274, { align: 'center' });
+      // Footer
+      doc.moveTo(60, H - 75).lineTo(W - 60, H - 75).lineWidth(0.5).strokeColor('#ddd').stroke();
 
-    doc.fontSize(11).fillColor('#444').font('Helvetica')
-      .text(`on the topic of ${workshopTopic}`, 0, 296, { align: 'center' });
+      doc.moveTo(90, H - 48).lineTo(210, H - 48).lineWidth(1).strokeColor('#333').stroke();
+      doc.fontSize(7).fillColor('#555').font('Helvetica')
+        .text('WORKSHOP COORDINATOR', 90, H - 43, { width: 120, align: 'center' });
 
-    doc.fontSize(10).fillColor('#666').font('Helvetica')
-      .text(`Conducted by ${speaker}   |   Date: ${date}`, 0, 314, { align: 'center' });
+      doc.fontSize(7.5).fillColor('#888').font('Helvetica')
+        .text(`Certificate ID: ${certificateId}`, 0, H - 62, { align: 'center', width: W })
+        .text(`Verify at: ${verifyURL}`, 0, H - 52, { align: 'center', width: W })
+        .text(`Issued: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`, 0, H - 42, { align: 'center', width: W });
 
-    // ── Footer ───────────────────────────────────────────────
-    doc.moveTo(50, H - 80).lineTo(W - 50, H - 80).lineWidth(0.5).strokeColor('#ddd').stroke();
+      doc.moveTo(W - 210, H - 48).lineTo(W - 90, H - 48).lineWidth(1).strokeColor('#333').stroke();
+      doc.fontSize(7).fillColor('#555').font('Helvetica')
+        .text('HEAD OF DEPARTMENT', W - 210, H - 43, { width: 120, align: 'center' });
 
-    doc.moveTo(80, H - 52).lineTo(220, H - 52).lineWidth(1).strokeColor('#333').stroke();
-    doc.fontSize(8).fillColor('#555').font('Helvetica')
-      .text('WORKSHOP COORDINATOR', 80, H - 46, { width: 140, align: 'center' });
-
-    doc.fontSize(8).fillColor('#888').font('Helvetica')
-      .text(`Certificate ID: ${certificateId}`, 0, H - 68, { align: 'center' })
-      .text(`Verify at: ${verifyURL}`, 0, H - 58, { align: 'center' })
-      .text(`Issued on: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`, 0, H - 48, { align: 'center' });
-
-    doc.moveTo(W - 220, H - 52).lineTo(W - 80, H - 52).lineWidth(1).strokeColor('#333').stroke();
-    doc.fontSize(8).fillColor('#555').font('Helvetica')
-      .text('HEAD OF DEPARTMENT', W - 220, H - 46, { width: 140, align: 'center' });
-
-    doc.end();
+      doc.end();
+    } catch (err) {
+      console.error('[generateCertificatePDF]', err);
+      reject(err);
+    }
   });
 };
 

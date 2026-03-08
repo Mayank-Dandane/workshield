@@ -4,150 +4,154 @@ const generateReportPDF = async (data) => {
   const { workshop, attendanceStats, feedbackStats, studentLogs } = data;
 
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({
-      size: 'A4',
-      margins: { top: 40, bottom: 40, left: 50, right: 50 }
-    });
+    try {
+      const doc = new PDFDocument({ size: 'A4', margin: 50 });
+      const buffers = [];
 
-    const buffers = [];
-    doc.on('data', chunk => buffers.push(chunk));
-    doc.on('end', () => {
-      try {
+      doc.on('data', chunk => buffers.push(chunk));
+      doc.on('error', reject);
+      doc.on('end', () => {
         const pdfBuffer = Buffer.concat(buffers);
-        const base64 = pdfBuffer.toString('base64');
-        resolve({ base64, fileName: `report_${workshop.workshop_id}.pdf` });
-      } catch (err) {
-        reject(err);
-      }
-    });
-    doc.on('error', reject);
-
-    const W = doc.page.width;
-
-    // ── Header ──────────────────────────────────────────────
-    doc.rect(0, 0, W + 100, 80).fill('#1a3a6b');
-    doc.fontSize(20).fillColor('white').font('Helvetica-Bold')
-      .text('Workshop Report', 50, 20);
-    doc.fontSize(9).fillColor('#aac4e8').font('Helvetica')
-      .text(`Workshop ID: ${workshop.workshop_id}   |   Date: ${new Date(workshop.date).toLocaleDateString('en-IN')}   |   Generated: ${new Date().toLocaleString('en-IN')}`, 50, 48);
-
-    let y = 100;
-
-    const sectionTitle = (title) => {
-      if (y > 700) { doc.addPage(); y = 50; }
-      doc.fontSize(11).fillColor('#1a3a6b').font('Helvetica-Bold')
-        .text(title, 50, y);
-      y += 16;
-      doc.moveTo(50, y).lineTo(W - 50, y).lineWidth(1.5).strokeColor('#1a3a6b').stroke();
-      y += 10;
-    };
-
-    const tableRow = (cols, widths, isHeader = false, isAlt = false) => {
-      if (y > 750) { doc.addPage(); y = 50; }
-      const rowH = 20;
-      const totalW = widths.reduce((a, b) => a + b, 0);
-      if (isHeader) {
-        doc.rect(50, y, totalW, rowH).fill('#1a3a6b');
-      } else if (isAlt) {
-        doc.rect(50, y, totalW, rowH).fill('#f0f4ff');
-      }
-      let x = 50;
-      cols.forEach((col, i) => {
-        doc.fontSize(8)
-          .fillColor(isHeader ? 'white' : '#222')
-          .font(isHeader ? 'Helvetica-Bold' : 'Helvetica')
-          .text(String(col), x + 4, y + 5, { width: widths[i] - 8, ellipsis: true });
-        x += widths[i];
+        resolve({
+          base64: pdfBuffer.toString('base64'),
+          fileName: `report_${workshop.workshop_id}.pdf`
+        });
       });
-      doc.rect(50, y, totalW, rowH).lineWidth(0.3).strokeColor('#ddd').stroke();
-      y += rowH;
-    };
 
-    // ── Section 1: Workshop Summary ──────────────────────────
-    sectionTitle('SECTION 1 — WORKSHOP SUMMARY');
+      const W = doc.page.width - 100;
 
-    const stats = [
-      { value: attendanceStats.totalScanned, label: 'Total Scanned' },
-      { value: attendanceStats.totalVerified, label: 'Verified Present' },
-      { value: `${attendanceStats.attendancePercentage}%`, label: 'Attendance Rate' },
-      { value: feedbackStats.total_submissions, label: 'Feedback Submitted' }
-    ];
-    const boxW = 110;
-    stats.forEach((s, i) => {
-      const bx = 50 + i * (boxW + 8);
-      doc.rect(bx, y, boxW, 44).fill('#f0f4ff').stroke();
-      doc.fontSize(20).fillColor('#1a3a6b').font('Helvetica-Bold')
-        .text(String(s.value), bx, y + 6, { width: boxW, align: 'center' });
-      doc.fontSize(7).fillColor('#666').font('Helvetica')
-        .text(s.label.toUpperCase(), bx, y + 30, { width: boxW, align: 'center' });
-    });
-    y += 56;
+      // Header
+      doc.fontSize(18).fillColor('#1a3a6b').font('Helvetica-Bold')
+        .text('WORKSHOP REPORT', 50, 50, { align: 'center', width: W });
+      doc.fontSize(10).fillColor('#444').font('Helvetica')
+        .text("JSPM's RSCOE — Dept. of Automation & Robotics", 50, 75, { align: 'center', width: W });
+      doc.moveTo(50, 95).lineTo(550, 95).lineWidth(2).strokeColor('#1a3a6b').stroke();
 
-    const details = [
-      ['Title', workshop.title],
-      ['Topic', workshop.topic],
-      ['Speaker', workshop.speaker],
-      ['Date', new Date(workshop.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })],
-      ['Time', `${workshop.start_time} - ${workshop.end_time}`],
-      ['Min Duration', `${workshop.min_duration_minutes} minutes`],
-      ['Random Check', workshop.random_check_enabled ? 'Enabled' : 'Disabled']
-    ];
-    details.forEach(([k, v], i) => {
-      if (i % 2 !== 0) doc.rect(50, y, 445, 18).fill('#f7f9ff');
-      doc.fontSize(8).fillColor('#333').font('Helvetica-Bold').text(k, 54, y + 4, { width: 120 });
-      doc.fontSize(8).fillColor('#444').font('Helvetica').text(String(v), 180, y + 4, { width: 310 });
+      // Workshop Details
+      doc.fontSize(12).fillColor('#1a3a6b').font('Helvetica-Bold').text('Workshop Details', 50, 110);
+      doc.moveTo(50, 125).lineTo(550, 125).lineWidth(0.5).strokeColor('#ccc').stroke();
+
+      const details = [
+        ['Workshop ID', workshop.workshop_id],
+        ['Title', workshop.title],
+        ['Topic', workshop.topic],
+        ['Speaker', workshop.speaker],
+        ['Date', new Date(workshop.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })],
+        ['Time', `${workshop.start_time} - ${workshop.end_time}`],
+        ['Min Duration', `${workshop.min_duration_minutes} minutes`],
+      ];
+
+      let y = 132;
+      details.forEach(([key, val], i) => {
+        if (i % 2 === 0) doc.rect(50, y, W, 18).fill('#f5f7fa');
+        doc.fontSize(9).fillColor('#333').font('Helvetica-Bold').text(key + ':', 55, y + 4, { width: 150 });
+        doc.fontSize(9).fillColor('#444').font('Helvetica').text(String(val || 'N/A'), 210, y + 4, { width: W - 160 });
+        y += 18;
+      });
+
+      // Attendance Stats
+      y += 15;
+      doc.fontSize(12).fillColor('#1a3a6b').font('Helvetica-Bold').text('Attendance Summary', 50, y);
       y += 18;
-    });
-    y += 16;
+      doc.moveTo(50, y).lineTo(550, y).lineWidth(0.5).strokeColor('#ccc').stroke();
+      y += 8;
 
-    // ── Section 2: Attendance ────────────────────────────────
-    sectionTitle('SECTION 2 — ATTENDANCE ANALYSIS');
-    tableRow(['Metric', 'Value'], [280, 165], true);
-    [
-      ['Average Duration', `${attendanceStats.avgDuration} mins`],
-      ['Early Exits', attendanceStats.earlyExits],
-      ['No Exit Scanned', attendanceStats.noExit],
-      ['Verified Rate', `${attendanceStats.attendancePercentage}%`]
-    ].forEach(([k, v], i) => tableRow([k, v], [280, 165], false, i % 2 !== 0));
-    y += 16;
+      const statsData = [
+        ['Total Scanned', attendanceStats.totalScanned],
+        ['Total Verified', attendanceStats.totalVerified],
+        ['Attendance Rate', `${attendanceStats.attendancePercentage}%`],
+        ['Average Duration', `${attendanceStats.avgDuration} mins`],
+        ['Early Exits', attendanceStats.earlyExits],
+        ['No Exit Scanned', attendanceStats.noExit],
+      ];
 
-    // ── Section 3: Feedback ──────────────────────────────────
-    sectionTitle('SECTION 3 — FEEDBACK ANALYSIS');
-    doc.fontSize(9).fillColor('#333').font('Helvetica')
-      .text(`Overall Average Rating: ${feedbackStats.overall_average} / 5`, 50, y);
-    y += 16;
+      statsData.forEach(([key, val], i) => {
+        if (i % 2 === 0) doc.rect(50, y, W, 18).fill('#f5f7fa');
+        doc.fontSize(9).fillColor('#333').font('Helvetica-Bold').text(key + ':', 55, y + 4, { width: 150 });
+        doc.fontSize(9).fillColor('#444').font('Helvetica').text(String(val || '0'), 210, y + 4, { width: W - 160 });
+        y += 18;
+      });
 
-    tableRow(['Question', 'Avg Score', 'Responses'], [280, 80, 85], true);
-    (feedbackStats.per_question || []).forEach((q, i) => {
-      tableRow([q.question, `${q.average}/5`, q.total_responses], [280, 80, 85], false, i % 2 !== 0);
-    });
-    y += 16;
+      // Feedback
+      y += 15;
+      doc.fontSize(12).fillColor('#1a3a6b').font('Helvetica-Bold').text('Feedback Analysis', 50, y);
+      y += 18;
+      doc.moveTo(50, y).lineTo(550, y).lineWidth(0.5).strokeColor('#ccc').stroke();
+      y += 8;
 
-    // ── Section 4: Attendance List ───────────────────────────
-    if (y > 650) { doc.addPage(); y = 50; }
-    sectionTitle('SECTION 4 — FULL ATTENDANCE RECORD');
-    tableRow(['#', 'Name', 'Roll No', 'Year', 'Entry', 'Exit', 'Duration', 'Status'],
-      [25, 110, 70, 40, 50, 50, 55, 55], true);
+      doc.rect(50, y, W, 18).fill('#f5f7fa');
+      doc.fontSize(9).fillColor('#333').font('Helvetica-Bold').text('Total Submissions:', 55, y + 4, { width: 150 });
+      doc.fontSize(9).fillColor('#444').font('Helvetica').text(String(feedbackStats.total_submissions || 0), 210, y + 4);
+      y += 18;
+      doc.fontSize(9).fillColor('#333').font('Helvetica-Bold').text('Overall Average:', 55, y + 4, { width: 150 });
+      doc.fontSize(9).fillColor('#444').font('Helvetica').text(`${feedbackStats.overall_average || 0} / 5`, 210, y + 4);
+      y += 24;
 
-    studentLogs.forEach((log, i) => {
-      tableRow([
-        i + 1,
-        log.student_id?.name || 'N/A',
-        log.student_id?.roll_number || 'N/A',
-        `Year ${log.student_id?.year || 'N/A'}`,
-        log.entry_time ? new Date(log.entry_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
-        log.exit_time ? new Date(log.exit_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
-        `${log.total_duration_minutes || 0} mins`,
-        log.verified_status ? 'Verified' : 'Not Verified'
-      ], [25, 110, 70, 40, 50, 50, 55, 55], false, i % 2 !== 0);
-    });
+      if (feedbackStats.per_question?.length) {
+        doc.rect(50, y, W, 18).fill('#1a3a6b');
+        doc.fontSize(8).fillColor('white').font('Helvetica-Bold').text('Question', 55, y + 4, { width: 280 });
+        doc.fontSize(8).fillColor('white').font('Helvetica-Bold').text('Avg Score', 340, y + 4, { width: 80 });
+        doc.fontSize(8).fillColor('white').font('Helvetica-Bold').text('Responses', 430, y + 4, { width: 80 });
+        y += 18;
 
-    y += 20;
-    doc.fontSize(7).fillColor('#999').font('Helvetica')
-      .text(`Generated by WorkShield System | Workshop ID: ${workshop.workshop_id} | ${new Date().toLocaleString('en-IN')}`,
-        50, y, { align: 'center', width: W - 100 });
+        feedbackStats.per_question.forEach((q, i) => {
+          if (i % 2 === 0) doc.rect(50, y, W, 18).fill('#f5f7fa');
+          doc.fontSize(8).fillColor('#333').font('Helvetica').text(q.question || '', 55, y + 4, { width: 280 });
+          doc.fontSize(8).fillColor('#333').font('Helvetica').text(`${q.average}/5`, 340, y + 4, { width: 80 });
+          doc.fontSize(8).fillColor('#333').font('Helvetica').text(String(q.total_responses), 430, y + 4, { width: 80 });
+          y += 18;
+        });
+      }
 
-    doc.end();
+      // Attendance List
+      if (studentLogs?.length) {
+        doc.addPage();
+        y = 50;
+        doc.fontSize(12).fillColor('#1a3a6b').font('Helvetica-Bold').text('Full Attendance Record', 50, y);
+        y += 18;
+        doc.moveTo(50, y).lineTo(550, y).lineWidth(0.5).strokeColor('#ccc').stroke();
+        y += 8;
+
+        doc.rect(50, y, W, 18).fill('#1a3a6b');
+        ['#', 'Name', 'Roll No', 'Entry', 'Exit', 'Duration', 'Status'].forEach((h, i) => {
+          const xs = [55, 78, 200, 275, 333, 391, 454];
+          const ws = [20, 120, 70, 55, 55, 60, 60];
+          doc.fontSize(7).fillColor('white').font('Helvetica-Bold').text(h, xs[i], y + 4, { width: ws[i] });
+        });
+        y += 18;
+
+        studentLogs.forEach((log, i) => {
+          if (y > 760) { doc.addPage(); y = 50; }
+          if (i % 2 === 0) doc.rect(50, y, W, 16).fill('#f5f7fa');
+          const cols = [
+            String(i + 1),
+            log.student_id?.name || 'N/A',
+            log.student_id?.roll_number || 'N/A',
+            log.entry_time ? new Date(log.entry_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+            log.exit_time ? new Date(log.exit_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+            `${log.total_duration_minutes || 0} mins`,
+            log.verified_status ? 'Verified' : 'Not Verified'
+          ];
+          const xs = [55, 78, 200, 275, 333, 391, 454];
+          const ws = [20, 120, 70, 55, 55, 60, 60];
+          cols.forEach((col, ci) => {
+            doc.fontSize(7)
+              .fillColor(ci === 6 ? (log.verified_status ? '#00a550' : '#cc0000') : '#333')
+              .font(ci === 6 ? 'Helvetica-Bold' : 'Helvetica')
+              .text(col, xs[ci], y + 3, { width: ws[ci] });
+          });
+          y += 16;
+        });
+      }
+
+      doc.fontSize(7).fillColor('#999').font('Helvetica')
+        .text(`Generated by WorkShield | ${new Date().toLocaleString('en-IN')}`, 50, 780, { align: 'center', width: W });
+
+      doc.end();
+    } catch (err) {
+      console.error('[generateReportPDF]', err);
+      reject(err);
+    }
   });
 };
 
