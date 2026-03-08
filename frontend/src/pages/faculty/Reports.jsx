@@ -2,16 +2,16 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FacultyLayout from '../../components/faculty/FacultyLayout';
 import { getAllWorkshops } from '../../api/workshop.api';
-import { exportAttendanceExcel, getAttendanceByWorkshop } from '../../api/attendance.api';
+import { getAttendanceByWorkshop } from '../../api/attendance.api';
 import { getFeedbackAnalytics } from '../../api/feedback.api';
 import toast from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import {
   FileText, Download, BarChart2,
   BookOpen, Calendar, Users, Star
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 
 const generateReportPDF = (workshop, attendanceLogs, feedbackStats) => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -29,7 +29,6 @@ const generateReportPDF = (workshop, attendanceLogs, feedbackStats) => {
 
   let y = 35;
 
-  // Section helper
   const sectionTitle = (title) => {
     doc.setFontSize(11).setTextColor(26, 58, 107).setFont('helvetica', 'bold');
     doc.text(title, 14, y);
@@ -48,7 +47,7 @@ const generateReportPDF = (workshop, attendanceLogs, feedbackStats) => {
     y += 7;
   };
 
-  // Workshop Details
+  // Section 1 — Workshop Details
   sectionTitle('SECTION 1 — WORKSHOP DETAILS');
   row('Workshop ID', workshop.workshop_id, false);
   row('Title', workshop.title, true);
@@ -60,7 +59,7 @@ const generateReportPDF = (workshop, attendanceLogs, feedbackStats) => {
   row('Random Check', workshop.random_check_enabled ? 'Enabled' : 'Disabled', true);
   y += 6;
 
-  // Attendance Stats
+  // Section 2 — Attendance Summary
   sectionTitle('SECTION 2 — ATTENDANCE SUMMARY');
   const verified = attendanceLogs.filter(l => l.verified_status).length;
   const total = attendanceLogs.length;
@@ -76,14 +75,14 @@ const generateReportPDF = (workshop, attendanceLogs, feedbackStats) => {
   row('No Exit Scanned', attendanceLogs.filter(l => !l.exit_time).length, false);
   y += 6;
 
-  // Feedback
+  // Section 3 — Feedback
   sectionTitle('SECTION 3 — FEEDBACK ANALYSIS');
   row('Total Submissions', feedbackStats?.total_submissions || 0, false);
   row('Overall Average', `${feedbackStats?.overall_average || 0} / 5`, true);
   y += 3;
 
   if (feedbackStats?.per_question?.length) {
-    doc.autoTable({
+    autoTable(doc, {
       startY: y,
       head: [['Question', 'Avg Score', 'Responses']],
       body: feedbackStats.per_question.map(q => [q.question, `${q.average}/5`, q.total_responses]),
@@ -95,7 +94,7 @@ const generateReportPDF = (workshop, attendanceLogs, feedbackStats) => {
     y = doc.lastAutoTable.finalY + 10;
   }
 
-  // Attendance list — new page
+  // Section 4 — Attendance List (new page)
   if (attendanceLogs.length > 0) {
     doc.addPage();
     y = 15;
@@ -105,7 +104,7 @@ const generateReportPDF = (workshop, attendanceLogs, feedbackStats) => {
     doc.setDrawColor(26, 58, 107).setLineWidth(0.5).line(14, y, W - 14, y);
     y += 4;
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: y,
       head: [['#', 'Name', 'Roll No', 'Year', 'Entry', 'Exit', 'Duration', 'Status']],
       body: attendanceLogs.map((log, i) => [
@@ -121,19 +120,17 @@ const generateReportPDF = (workshop, attendanceLogs, feedbackStats) => {
       styles: { fontSize: 7.5, cellPadding: 2 },
       headStyles: { fillColor: [26, 58, 107], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [245, 247, 250] },
-      columnStyles: {
-        7: { fontStyle: 'bold' }
-      },
       didParseCell: (data) => {
         if (data.column.index === 7 && data.section === 'body') {
           data.cell.styles.textColor = data.cell.raw === 'Verified' ? [0, 165, 80] : [204, 0, 0];
+          data.cell.styles.fontStyle = 'bold';
         }
       },
       margin: { left: 14, right: 14 }
     });
   }
 
-  // Footer
+  // Footer on all pages
   const pageCount = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
@@ -142,6 +139,35 @@ const generateReportPDF = (workshop, attendanceLogs, feedbackStats) => {
   }
 
   doc.save(`report_${workshop.workshop_id}.pdf`);
+};
+
+const generateExcel = (workshop, logs) => {
+  const verifiedLogs = logs.filter(l => l.verified_status);
+  if (!verifiedLogs.length) return false;
+
+  const data = verifiedLogs.map((log, i) => ({
+    'Sr. No': i + 1,
+    'Student Name': log.student_id?.name || 'N/A',
+    'Roll Number': log.student_id?.roll_number || 'N/A',
+    'Year': `Year ${log.student_id?.year || 'N/A'}`,
+    'Department': log.student_id?.department || 'N/A',
+    'Entry Time': log.entry_time ? new Date(log.entry_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
+    'Exit Time': log.exit_time ? new Date(log.exit_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
+    'Duration (mins)': log.total_duration_minutes || 0,
+    'Verified': '✓ Verified',
+    'Signature': ''
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [
+    { wch: 6 }, { wch: 25 }, { wch: 15 }, { wch: 8 },
+    { wch: 20 }, { wch: 18 }, { wch: 18 }, { wch: 12 },
+    { wch: 12 }, { wch: 20 }
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Attendance Sheet');
+  XLSX.writeFile(wb, `attendance_${workshop.workshop_id}.xlsx`);
+  return true;
 };
 
 export default function Reports() {
@@ -191,47 +217,14 @@ export default function Reports() {
     }
   };
 
-  const handleExcel = async (workshopId, workshopCode) => {
-    setExporting(workshopId);
+  const handleExcel = async (workshop) => {
+    setExporting(workshop._id);
     try {
-      const res = await getAttendanceByWorkshop(workshopId);
-      const logs = res.data.data.logs || [];
-      const verifiedLogs = logs.filter(l => l.verified_status);
-  
-      if (!verifiedLogs.length) {
-        toast.error('No verified students found');
-        return;
-      }
-  
-      const workshop = workshops.find(w => w._id === workshopId);
-  
-      // Build data
-      const data = verifiedLogs.map((log, i) => ({
-        'Sr. No': i + 1,
-        'Student Name': log.student_id?.name || 'N/A',
-        'Roll Number': log.student_id?.roll_number || 'N/A',
-        'Year': `Year ${log.student_id?.year || 'N/A'}`,
-        'Department': log.student_id?.department || 'N/A',
-        'Entry Time': log.entry_time ? new Date(log.entry_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
-        'Exit Time': log.exit_time ? new Date(log.exit_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
-        'Duration (mins)': log.total_duration_minutes || 0,
-        'Verified': '✓ Verified',
-        'Signature': ''
-      }));
-  
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Attendance Sheet');
-  
-      // Column widths
-      ws['!cols'] = [
-        { wch: 6 }, { wch: 25 }, { wch: 15 }, { wch: 8 },
-        { wch: 20 }, { wch: 18 }, { wch: 18 }, { wch: 12 },
-        { wch: 12 }, { wch: 20 }
-      ];
-  
-      XLSX.writeFile(wb, `attendance_${workshopCode}.xlsx`);
-      toast.success('Excel exported!');
+      const attRes = await getAttendanceByWorkshop(workshop._id);
+      const logs = attRes.data.data.logs || [];
+      const ok = generateExcel(workshop, logs);
+      if (ok) toast.success('Excel exported!');
+      else toast.error('No verified students found');
     } catch (err) {
       toast.error('Export failed');
     } finally {
@@ -316,7 +309,7 @@ export default function Reports() {
 
                     <div className="mt-4 flex gap-3">
                       <button
-                        onClick={() => handleExcel(w._id, w.workshop_id)}
+                        onClick={() => handleExcel(w)}
                         disabled={exporting === w._id}
                         className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-sm font-medium transition-colors disabled:opacity-70"
                       >

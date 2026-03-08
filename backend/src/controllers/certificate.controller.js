@@ -195,7 +195,8 @@ const getMyCertificates = async (req, res) => {
   try {
     const certificates = await Certificate.find({
       student_id: req.user._id
-    }).populate('workshop_id', 'title date workshop_id topic');
+    }).populate('workshop_id', 'title date workshop_id topic speaker')
+      .populate('student_id', 'name roll_number department');
 
     return sendSuccess(res, 200, 'Your certificates', {
       total: certificates.length,
