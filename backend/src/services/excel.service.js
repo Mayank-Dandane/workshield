@@ -178,14 +178,13 @@ const generateAttendanceExcel = async (workshop, logs) => {
         resource_type: 'raw',
         folder: 'workshield/excel',
         public_id: `attendance_${workshop.workshop_id}_${Date.now()}`,
-        use_filename: true,
-        unique_filename: false
+        format: 'xlsx'
       },
       (error, result) => {
         if (error) reject(error);
         else resolve(result.secure_url);
       }
-    ).end(buffer);
+    ).end(Buffer.from(buffer));
   });
 
   return { cloudinaryUrl, fileName };

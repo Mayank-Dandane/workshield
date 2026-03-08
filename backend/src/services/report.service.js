@@ -34,7 +34,7 @@ const generateReportPDF = async (data) => {
               if (error) rej(error);
               else res(result);
             }
-          ).end(pdfBuffer);
+          ).end(Buffer.from(pdfBuffer))
         });
 
         resolve({ cloudinaryUrl: result.secure_url, fileName: `report_${workshop.workshop_id}.pdf` });

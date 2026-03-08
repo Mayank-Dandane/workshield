@@ -43,7 +43,7 @@ const generateCertificatePDF = async (data) => {
               }
               else res(result);
             }
-          ).end(pdfBuffer);
+          ).end(Buffer.from(pdfBuffer));
         });
 
         resolve({ cloudinaryUrl: result.secure_url, fileName: `certificate_${certificateId}.pdf` });
