@@ -5,6 +5,7 @@
     "main": "server.js",
     "scripts": {
       "start": "node server.js",
+      "postinstall": "node node_modules/puppeteer/install.mjs",
       "dev": "nodemon server.js",
       "test": "echo \"No tests yet\" && exit 0"
     },
