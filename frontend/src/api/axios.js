@@ -21,16 +21,9 @@ API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Only redirect if NOT on a login page
-      const isLoginPage =
-        window.location.pathname === '/login' ||
-        window.location.pathname === '/faculty/login';
-
-      if (!isLoginPage) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-      }
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }

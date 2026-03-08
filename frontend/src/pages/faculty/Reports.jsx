@@ -49,13 +49,9 @@ export default function Reports() {
     setGenerating(workshopId);
     try {
       const res = await generateReport(workshopId);
-      const blob = new Blob([res.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `report_${workshopCode}.pdf`;
-      a.click();
-      window.URL.revokeObjectURL(url);
+      const url = res.data.data?.download_url;
+      if (url) window.open(url, '_blank');
+      else toast.error('Failed to get report URL');
       toast.success('Report downloaded!');
     } catch (err) {
       toast.error('Failed to generate report');
@@ -68,16 +64,9 @@ export default function Reports() {
     setExporting(workshopId);
     try {
       const res = await exportAttendanceExcel(workshopId);
-      const blob = new Blob([res.data], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `attendance_${workshopCode}.xlsx`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-      toast.success('Excel exported!');
+      const url = res.data.data?.download_url;
+      if (url) window.open(url, '_blank');
+      else toast.error('Failed to get Excel URL');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Export failed — no verified students?');
     } finally {

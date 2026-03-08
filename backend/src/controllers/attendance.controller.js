@@ -307,23 +307,22 @@ const exportAttendanceExcel = async (req, res) => {
     }
 
     // Generate Excel
-    const { filePath, fileName } = await generateAttendanceExcel(workshop, logs);
-
-    // Send file as download
-    res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    );
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${fileName}"`
-    );
-
-    res.sendFile(path.resolve(filePath), (err) => {
-      if (err) {
-        console.error('[exportAttendanceExcel] Send error:', err.message);
-      }
-    });
+// Generate Excel
+const { filePath, fileName } = await generateAttendanceExcel(workshop, logs);
+// Send file as download
+res.setHeader(
+  'Content-Type',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+);
+res.setHeader(
+  'Content-Disposition',
+  `attachment; filename="${fileName}"`
+);
+res.sendFile(path.resolve(filePath), (err) => {
+  if (err) {
+    console.error('[exportAttendanceExcel] Send error:', err.message);
+  }
+});
 
   } catch (err) {
     console.error('[exportAttendanceExcel]', err.message);

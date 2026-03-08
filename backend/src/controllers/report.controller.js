@@ -82,8 +82,10 @@ const generateWorkshopReport = async (req, res) => {
     });
 
     // ── Send PDF ───────────────────────────────────────────────
-    return res.redirect(cloudinaryUrl);
-
+    return sendSuccess(res, 200, 'Report generated', {
+      download_url: cloudinaryUrl,
+      fileName
+    });
   } catch (err) {
     console.error('[generateWorkshopReport]', err.message);
     return sendError(res, 500, 'Failed to generate report');

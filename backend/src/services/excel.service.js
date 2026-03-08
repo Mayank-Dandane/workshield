@@ -1,13 +1,18 @@
 const ExcelJS = require('exceljs');
-const path = require('path');
-const fs = require('fs');
+const cloudinary = require('cloudinary').v2;
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 /**
  * Generate hybrid attendance Excel sheet
  * Only includes verified students
  * @param {Object} workshop - workshop document
  * @param {Array} logs - verified attendance logs with populated student
- * @returns {string} file path of generated Excel
+ * @returns {Object} { cloudinaryUrl, fileName }
  */
 const generateAttendanceExcel = async (workshop, logs) => {
   const workbook = new ExcelJS.Workbook();
@@ -36,13 +41,9 @@ const generateAttendanceExcel = async (workshop, logs) => {
   // Row 1 — Department title
   sheet.mergeCells('A1:J1');
   const deptRow = sheet.getCell('A1');
-  deptRow.value = 'DEPARTMENT OF COMPUTER SCIENCE';
-  deptRow.font = { name: 'Arial', bold: true, size: 14 };
+  deptRow.value = 'DEPARTMENT OF AUTOMATION & ROBOTICS';
   deptRow.alignment = { horizontal: 'center', vertical: 'middle' };
-  deptRow.fill = {
-    type: 'pattern', pattern: 'solid',
-    fgColor: { argb: 'FF1F3864' }
-  };
+  deptRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F3864' } };
   deptRow.font = { name: 'Arial', bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
   sheet.getRow(1).height = 30;
 
@@ -52,10 +53,7 @@ const generateAttendanceExcel = async (workshop, logs) => {
   titleRow.value = `Workshop: ${workshop.title}`;
   titleRow.font = { name: 'Arial', bold: true, size: 12 };
   titleRow.alignment = { horizontal: 'center', vertical: 'middle' };
-  titleRow.fill = {
-    type: 'pattern', pattern: 'solid',
-    fgColor: { argb: 'FFD6E4F0' }
-  };
+  titleRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6E4F0' } };
   sheet.getRow(2).height = 22;
 
   // Row 3 — Workshop details
@@ -85,10 +83,7 @@ const generateAttendanceExcel = async (workshop, logs) => {
   sheet.getCell('A5').value = `Total Verified Students: ${logs.length}`;
   sheet.getCell('A5').font = { name: 'Arial', bold: true, size: 10 };
   sheet.getCell('A5').alignment = { horizontal: 'center' };
-  sheet.getCell('A5').fill = {
-    type: 'pattern', pattern: 'solid',
-    fgColor: { argb: 'FFE2EFDA' }
-  };
+  sheet.getCell('A5').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2EFDA' } };
   sheet.getRow(5).height = 18;
 
   // Row 6 — Empty spacer
@@ -103,13 +98,9 @@ const generateAttendanceExcel = async (workshop, logs) => {
   ];
   headerRow.height = 20;
 
-  // Style header row
   headerRow.eachCell((cell) => {
     cell.font = { name: 'Arial', bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
-    cell.fill = {
-      type: 'pattern', pattern: 'solid',
-      fgColor: { argb: 'FF2E75B6' }
-    };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2E75B6' } };
     cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     cell.border = {
       top: { style: 'thin' }, left: { style: 'thin' },
@@ -139,32 +130,24 @@ const generateAttendanceExcel = async (workshop, logs) => {
       formatTime(log.exit_time),
       log.total_duration_minutes,
       '✓ Verified',
-      ''   // blank signature column
+      ''
     ];
 
     row.height = 18;
 
-    // Alternate row colors
     const bgColor = index % 2 === 0 ? 'FFFFFFFF' : 'FFF2F7FC';
 
     row.eachCell((cell, colNum) => {
       cell.font = { name: 'Arial', size: 10 };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.fill = {
-        type: 'pattern', pattern: 'solid',
-        fgColor: { argb: bgColor }
-      };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
       cell.border = {
         top: { style: 'thin', color: { argb: 'FFD0D0D0' } },
         left: { style: 'thin', color: { argb: 'FFD0D0D0' } },
         bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
         right: { style: 'thin', color: { argb: 'FFD0D0D0' } }
       };
-
-      // Name column — left align
       if (colNum === 2) cell.alignment = { horizontal: 'left', vertical: 'middle' };
-
-      // Verified column — green text
       if (colNum === 9) cell.font = { name: 'Arial', size: 10, color: { argb: 'FF00B050' }, bold: true };
     });
   });
@@ -177,7 +160,7 @@ const generateAttendanceExcel = async (workshop, logs) => {
   footerCell.font = { name: 'Arial', size: 8, italic: true, color: { argb: 'FF808080' } };
   footerCell.alignment = { horizontal: 'center' };
 
-  // ─── SIGNATURE ROW LABEL ───────────────────────────────────
+  // ─── SIGNATURE NOTE ────────────────────────────────────────
   const sigNoteRowNum = footerRowNum + 1;
   sheet.mergeCells(`A${sigNoteRowNum}:J${sigNoteRowNum}`);
   const sigNote = sheet.getCell(`A${sigNoteRowNum}`);
@@ -185,18 +168,26 @@ const generateAttendanceExcel = async (workshop, logs) => {
   sigNote.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFFF0000' } };
   sigNote.alignment = { horizontal: 'center' };
 
-  // ─── Save file ─────────────────────────────────────────────
-  const outputDir = path.join(__dirname, '../../generated/excel');
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
-  }
-
+  // ─── Upload to Cloudinary ──────────────────────────────────
   const fileName = `attendance_${workshop.workshop_id}_${Date.now()}.xlsx`;
-  const filePath = path.join(outputDir, fileName);
+  const buffer = await workbook.xlsx.writeBuffer();
 
-  await workbook.xlsx.writeFile(filePath);
+  const cloudinaryUrl = await new Promise((resolve, reject) => {
+    cloudinary.uploader.upload_stream(
+      {
+        resource_type: 'raw',
+        folder: 'workshield/excel',
+        public_id: fileName,
+        format: 'xlsx'
+      },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result.secure_url);
+      }
+    ).end(buffer);
+  });
 
-  return { filePath, fileName };
+  return { cloudinaryUrl, fileName };
 };
 
 module.exports = { generateAttendanceExcel };

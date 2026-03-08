@@ -125,16 +125,13 @@ const downloadCertificate = async (req, res) => {
       student_id: req.user._id
     });
 
-    if (!certificate) {
-      return sendError(res, 404, 'Certificate not found');
-    }
+    if (!certificate) return sendError(res, 404, 'Certificate not found');
+    if (!certificate.is_valid) return sendError(res, 400, 'Certificate invalidated');
 
-    if (!certificate.is_valid) {
-      return sendError(res, 400, 'This certificate has been invalidated');
-    }
-
-    // Redirect to Cloudinary URL
-    return res.redirect(certificate.file_path);
+    return sendSuccess(res, 200, 'Certificate URL', {
+      download_url: certificate.file_path,
+      certificate_id: certificate.certificate_id
+    });
 
   } catch (err) {
     console.error('[downloadCertificate]', err.message);

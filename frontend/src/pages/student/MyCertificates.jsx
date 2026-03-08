@@ -61,17 +61,19 @@ export default function MyCertificates() {
   };
 
   const handleDownload = async (certId) => {
-    setDownloading(certId);
     try {
-      const res = await downloadCertificate(certId);
-      const blob = new Blob([res.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `certificate_${certId}.pdf`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-      toast.success('Certificate downloaded!');
+      setDownloading(certId);
+      const token = localStorage.getItem('token');
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/certificates/download/${certId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      if (data.data?.download_url) {
+        window.open(data.data.download_url, '_blank');
+      } else {
+        toast.error('Download failed');
+      }
     } catch (err) {
       toast.error('Failed to download certificate');
     } finally {
