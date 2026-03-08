@@ -177,8 +177,9 @@ const generateAttendanceExcel = async (workshop, logs) => {
       {
         resource_type: 'raw',
         folder: 'workshield/excel',
-        public_id: fileName,
-        format: 'xlsx'
+        public_id: `attendance_${workshop.workshop_id}_${Date.now()}`,
+        use_filename: true,
+        unique_filename: false
       },
       (error, result) => {
         if (error) reject(error);

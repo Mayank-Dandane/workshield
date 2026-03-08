@@ -3,7 +3,7 @@ const AttendanceLog = require('../models/AttendanceLog');
 const Feedback = require('../models/Feedback');
 const { generateReportPDF } = require('../services/report.service');
 const { sendSuccess, sendError } = require('../utils/response.util');
-
+const { calculateAnalytics } = require('../services/feedback.service');
 // ─────────────────────────────────────────────────────────────────
 // @route   GET /api/reports/:workshopId
 // @desc    Generate full workshop report PDF
