@@ -97,6 +97,7 @@ const scanQR = async (req, res) => {
       student_id: studentId,
       workshop_id: workshop._id
     });
+    console.log('[scan] studentId:', studentId, 'workshopId:', workshop._id, 'log:', JSON.stringify(log));
 
     // ─── Handle ENTRY scan ────────────────────────────────────
 // ─── Handle ENTRY scan ────────────────────────────────────
