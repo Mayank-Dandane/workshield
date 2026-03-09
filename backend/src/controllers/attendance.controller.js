@@ -130,8 +130,10 @@ if (scanType === 'entry') {
       }
 
       if (log.exit_time) {
-        return sendError(res, 400, 'Exit already recorded for this workshop');
-      }
+        return sendSuccess(res, 200, '✅ You have already scanned exit for this workshop!', {
+          type: 'exit',
+          already_recorded: true
+        });      }
 
       log.exit_time = now;
 
