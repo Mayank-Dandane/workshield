@@ -96,7 +96,7 @@ const generateCertificate = async (req, res) => {
       workshop_id,
       issue_date: new Date(issuedAt),
       verification_hash: verificationHash,
-      file_path: cloudinaryResult.secure_url   // store Cloudinary URL in file_path field
+      file_path: 'generated'   // store Cloudinary URL in file_path field
     });
 
     return sendSuccess(res, 201, '🎉 Certificate generated successfully!', {
@@ -126,14 +126,13 @@ const downloadCertificate = async (req, res) => {
       student_id: req.user._id
     });
 
-    if (!certificate)
-      return sendError(res, 404, 'Certificate not found');
+    if (!certificate) return sendError(res, 404, 'Certificate not found');
+    if (!certificate.is_valid) return sendError(res, 400, 'Certificate invalidated');
 
-    if (!certificate.is_valid)
-      return sendError(res, 400, 'Certificate invalidated');
-
-    // 🔥 Redirect directly to Cloudinary file
-    return res.redirect(certificate.file_path);
+    return sendSuccess(res, 200, 'Certificate URL', {
+      download_url: certificate.file_path,
+      certificate_id: certificate.certificate_id
+    });
 
   } catch (err) {
     console.error('[downloadCertificate]', err.message);
