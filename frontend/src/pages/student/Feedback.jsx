@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import StudentLayout from '../../components/student/StudentLayout';
 import { submitFeedback, getMyFeedback } from '../../api/feedback.api';
 import { getMyAttendance } from '../../api/attendance.api';
@@ -34,6 +35,7 @@ const StarRating = ({ value, onChange }) => (
 );
 
 export default function Feedback() {
+  const navigate = useNavigate();
   const [verifiedLogs, setVerifiedLogs] = useState([]);
   const [submittedFeedbacks, setSubmittedFeedbacks] = useState([]);
   const [selectedWorkshop, setSelectedWorkshop] = useState('');
@@ -86,15 +88,10 @@ export default function Feedback() {
         suggestions
       });
 
-      toast.success('🎉 Feedback submitted! Certificate is now available.');
+      toast.success('🎉 Feedback submitted! Redirecting to certificates...');
 
-      // Refresh
-      const feedRes = await getMyFeedback();
-      setSubmittedFeedbacks(feedRes.data.data.feedbacks || []);
-      setSelectedWorkshop('');
-      setRatings(QUESTIONS.map(q => ({ question: q, score: 0 })));
-      setComments('');
-      setSuggestions('');
+      // Redirect to certificates after 1.5 seconds
+      setTimeout(() => navigate('/student/certificates'), 1500);
 
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to submit feedback');
@@ -119,13 +116,11 @@ export default function Feedback() {
     <StudentLayout>
       <div className="max-w-2xl mx-auto space-y-6">
 
-        {/* Header */}
         <div>
           <h1 className="text-xl font-bold text-slate-800">Workshop Feedback</h1>
           <p className="text-sm text-slate-500 mt-0.5">Share your experience to unlock your certificate</p>
         </div>
 
-        {/* Already submitted */}
         {submittedFeedbacks.length > 0 && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="p-4 border-b border-slate-50 flex items-center gap-2">
@@ -153,7 +148,6 @@ export default function Feedback() {
           </div>
         )}
 
-        {/* Feedback form */}
         {pendingWorkshops.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center">
             <MessageSquare className="w-10 h-10 text-slate-300 mx-auto mb-3" />
@@ -170,8 +164,6 @@ export default function Feedback() {
             </div>
 
             <div className="p-6 space-y-6">
-
-              {/* Workshop selector */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
                   Select Workshop
@@ -191,7 +183,6 @@ export default function Feedback() {
                 </select>
               </div>
 
-              {/* Rating questions */}
               <div className="space-y-5">
                 <p className="text-sm font-medium text-slate-700">Rate the following (1-5 stars)</p>
                 {QUESTIONS.map((q, i) => (
@@ -205,7 +196,6 @@ export default function Feedback() {
                 ))}
               </div>
 
-              {/* Comments */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
                   Comments <span className="text-slate-400 font-normal">(optional)</span>
@@ -219,7 +209,6 @@ export default function Feedback() {
                 />
               </div>
 
-              {/* Suggestions */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
                   Suggestions <span className="text-slate-400 font-normal">(optional)</span>

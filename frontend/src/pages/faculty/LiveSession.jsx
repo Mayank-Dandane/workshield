@@ -10,6 +10,9 @@ import {
     Lock, Download, FileText, Clock,
     QrCode, ArrowLeft, XCircle
   } from 'lucide-react';
+  import { jsPDF } from 'jspdf';
+  import autoTable from 'jspdf-autotable';
+  import XLSX from 'xlsx-js-style';
 
 const QR_ROTATION = 25; // seconds
 
@@ -155,7 +158,339 @@ export default function LiveSession() {
       setReporting(false);
     }
   };
-
+  const generateReportPDF = (workshop, attendanceLogs, feedbackStats) => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = doc.internal.pageSize.getWidth();
+  
+    // Header
+    doc.setFillColor(26, 58, 107);
+    doc.rect(0, 0, W, 28, 'F');
+    doc.setFontSize(16).setTextColor(255, 255, 255).setFont('helvetica', 'bold');
+    doc.text('WORKSHOP REPORT', W / 2, 12, { align: 'center' });
+    doc.setFontSize(8).setFont('helvetica', 'normal');
+    doc.text("JSPM's RSCOE - Dept. of Automation & Robotics", W / 2, 20, { align: 'center' });
+    doc.setFontSize(7).setTextColor(170, 196, 232);
+    doc.text('Workshop ID: ' + workshop.workshop_id + '   |   Generated: ' + new Date().toLocaleString('en-IN'), W / 2, 25, { align: 'center' });
+  
+    // Section 1
+    doc.setFontSize(11).setTextColor(26, 58, 107).setFont('helvetica', 'bold');
+    doc.text('SECTION 1 - WORKSHOP DETAILS', 14, 38);
+    doc.setDrawColor(26, 58, 107).setLineWidth(0.5).line(14, 41, W - 14, 41);
+  
+    const details = [
+      ['Workshop ID', workshop.workshop_id || 'N/A'],
+      ['Title', workshop.title || 'N/A'],
+      ['Topic', workshop.topic || 'N/A'],
+      ['Speaker', workshop.speaker || 'N/A'],
+      ['Date', workshop.date ? new Date(workshop.date).toLocaleDateString('en-IN') : 'N/A'],
+      ['Time', (workshop.start_time || '') + ' - ' + (workshop.end_time || '')],
+      ['Min Duration', (workshop.min_duration_minutes || 0) + ' minutes'],
+    ];
+  
+    let y = 48;
+    details.forEach(([k, v]) => {
+      doc.setFontSize(9).setTextColor(60, 60, 60).setFont('helvetica', 'bold').text(k + ':', 16, y);
+      doc.setFont('helvetica', 'normal').setTextColor(80, 80, 80).text(String(v), 65, y);
+      y += 8;
+    });
+  
+    // Section 2
+    y += 4;
+    doc.setFontSize(11).setTextColor(26, 58, 107).setFont('helvetica', 'bold');
+    doc.text('SECTION 2 - ATTENDANCE SUMMARY', 14, y);
+    y += 3;
+    doc.setDrawColor(26, 58, 107).setLineWidth(0.5).line(14, y, W - 14, y);
+    y += 7;
+  
+    const verified = attendanceLogs.filter(l => l.verified_status).length;
+    const total = attendanceLogs.length;
+    const pct = total > 0 ? Math.round((verified / total) * 100) : 0;
+    const avgDur = total > 0
+      ? Math.round(attendanceLogs.reduce((s, l) => s + (l.total_duration_minutes || 0), 0) / total)
+      : 0;
+  
+    const stats = [
+      ['Total Scanned', total],
+      ['Total Verified', verified],
+      ['Attendance Rate', pct + '%'],
+      ['Average Duration', avgDur + ' mins'],
+    ];
+  
+    stats.forEach(([k, v]) => {
+      doc.setFontSize(9).setTextColor(60, 60, 60).setFont('helvetica', 'bold').text(k + ':', 16, y);
+      doc.setFont('helvetica', 'normal').setTextColor(80, 80, 80).text(String(v), 65, y);
+      y += 8;
+    });
+  
+    // Section 3
+    y += 4;
+    doc.setFontSize(11).setTextColor(26, 58, 107).setFont('helvetica', 'bold');
+    doc.text('SECTION 3 - FEEDBACK ANALYSIS', 14, y);
+    y += 3;
+    doc.setDrawColor(26, 58, 107).setLineWidth(0.5).line(14, y, W - 14, y);
+    y += 7;
+  
+    doc.setFontSize(9).setTextColor(60, 60, 60).setFont('helvetica', 'bold').text('Total Submissions:', 16, y);
+    doc.setFont('helvetica', 'normal').setTextColor(80, 80, 80).text(String(feedbackStats?.total_submissions || 0), 65, y);
+    y += 8;
+    doc.setFontSize(9).setTextColor(60, 60, 60).setFont('helvetica', 'bold').text('Overall Average:', 16, y);
+    doc.setFont('helvetica', 'normal').setTextColor(80, 80, 80).text((feedbackStats?.overall_average || 0) + ' / 5', 65, y);
+    y += 8;
+  
+    if (feedbackStats?.per_question?.length) {
+      autoTable(doc, {
+        startY: y + 4,
+        head: [['Question', 'Avg Score', 'Responses']],
+        body: feedbackStats.per_question.map(q => [q.question || '', (q.average || 0) + '/5', q.total_responses || 0]),
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [26, 58, 107], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        margin: { left: 14, right: 14 }
+      });
+    }
+  
+    // Section 4 - new page
+    if (attendanceLogs.length > 0) {
+      doc.addPage();
+      doc.setFontSize(11).setTextColor(26, 58, 107).setFont('helvetica', 'bold');
+      doc.text('SECTION 4 - FULL ATTENDANCE RECORD', 14, 20);
+      doc.setDrawColor(26, 58, 107).setLineWidth(0.5).line(14, 23, W - 14, 23);
+  
+      autoTable(doc, {
+        startY: 28,
+        head: [['#', 'Name', 'Roll No', 'Entry', 'Exit', 'Duration', 'Status']],
+        body: attendanceLogs.map((log, i) => [
+          i + 1,
+          (log.student_id && log.student_id.name) ? log.student_id.name : 'N/A',
+          (log.student_id && log.student_id.roll_number) ? log.student_id.roll_number : 'N/A',
+          log.entry_time ? new Date(log.entry_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+          log.exit_time ? new Date(log.exit_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+          (log.total_duration_minutes || 0) + ' mins',
+          log.verified_status ? 'Verified' : 'Not Verified'
+        ]),
+        styles: { fontSize: 7.5, cellPadding: 2 },
+        headStyles: { fillColor: [26, 58, 107], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        didParseCell: (data) => {
+          if (data.column.index === 6 && data.section === 'body') {
+            data.cell.styles.textColor = data.cell.raw === 'Verified' ? [0, 165, 80] : [204, 0, 0];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        },
+        margin: { left: 14, right: 14 }
+      });
+    }
+  
+    // Footer
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(7).setTextColor(160, 160, 160).setFont('helvetica', 'normal');
+      doc.text('Generated by WorkShield | Page ' + i + ' of ' + pageCount, W / 2, 290, { align: 'center' });
+    }
+  
+    doc.save('report_' + workshop.workshop_id + '.pdf');
+  };
+  
+  // Replace the entire generateExcel function in Reports.jsx
+  // Also change: import * as XLSX from 'xlsx'; → import XLSX from 'xlsx-js-style';
+  
+  const generateExcel = (workshop, logs) => {
+    const verifiedLogs = logs.filter(l => l.verified_status);
+    if (!verifiedLogs.length) return false;
+  
+    const wb = XLSX.utils.book_new();
+    const wsData = [];
+  
+    // Styles
+    const deptStyle = {
+      font: { name: 'Arial', bold: true, sz: 14, color: { rgb: 'FFFFFF' } },
+      fill: { fgColor: { rgb: '1F3864' } },
+      alignment: { horizontal: 'center', vertical: 'center' }
+    };
+    const titleStyle = {
+      font: { name: 'Arial', bold: true, sz: 12, color: { rgb: '1F3864' } },
+      fill: { fgColor: { rgb: 'D6E4F0' } },
+      alignment: { horizontal: 'center', vertical: 'center' }
+    };
+    const infoStyle = {
+      font: { name: 'Arial', sz: 10 },
+      alignment: { horizontal: 'left', vertical: 'center' }
+    };
+    const statsStyle = {
+      font: { name: 'Arial', bold: true, sz: 10, color: { rgb: '375623' } },
+      fill: { fgColor: { rgb: 'E2EFDA' } },
+      alignment: { horizontal: 'center', vertical: 'center' }
+    };
+    const headerStyle = {
+      font: { name: 'Arial', bold: true, sz: 10, color: { rgb: 'FFFFFF' } },
+      fill: { fgColor: { rgb: '2E75B6' } },
+      alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+      border: {
+        top: { style: 'thin', color: { rgb: '000000' } },
+        bottom: { style: 'thin', color: { rgb: '000000' } },
+        left: { style: 'thin', color: { rgb: '000000' } },
+        right: { style: 'thin', color: { rgb: '000000' } }
+      }
+    };
+    const evenRowStyle = (colNum) => ({
+      font: { name: 'Arial', sz: 10 },
+      fill: { fgColor: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: {
+        top: { style: 'thin', color: { rgb: 'D0D0D0' } },
+        bottom: { style: 'thin', color: { rgb: 'D0D0D0' } },
+        left: { style: 'thin', color: { rgb: 'D0D0D0' } },
+        right: { style: 'thin', color: { rgb: 'D0D0D0' } }
+      }
+    });
+    const oddRowStyle = () => ({
+      font: { name: 'Arial', sz: 10 },
+      fill: { fgColor: { rgb: 'F2F7FC' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: {
+        top: { style: 'thin', color: { rgb: 'D0D0D0' } },
+        bottom: { style: 'thin', color: { rgb: 'D0D0D0' } },
+        left: { style: 'thin', color: { rgb: 'D0D0D0' } },
+        right: { style: 'thin', color: { rgb: 'D0D0D0' } }
+      }
+    });
+    const verifiedStyle = {
+      font: { name: 'Arial', bold: true, sz: 10, color: { rgb: '00B050' } },
+      fill: { fgColor: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: {
+        top: { style: 'thin', color: { rgb: 'D0D0D0' } },
+        bottom: { style: 'thin', color: { rgb: 'D0D0D0' } },
+        left: { style: 'thin', color: { rgb: 'D0D0D0' } },
+        right: { style: 'thin', color: { rgb: 'D0D0D0' } }
+      }
+    };
+    const footerStyle = {
+      font: { name: 'Arial', italic: true, sz: 8, color: { rgb: '808080' } },
+      alignment: { horizontal: 'center', vertical: 'center' }
+    };
+    const noteStyle = {
+      font: { name: 'Arial', bold: true, sz: 9, color: { rgb: 'FF0000' } },
+      alignment: { horizontal: 'center', vertical: 'center' }
+    };
+  
+    // Row 1 - Dept header
+    wsData.push([
+      { v: "DEPARTMENT OF AUTOMATION & ROBOTICS — JSPM's RSCOE", s: deptStyle },
+      { v: '', s: deptStyle }, { v: '', s: deptStyle }, { v: '', s: deptStyle },
+      { v: '', s: deptStyle }, { v: '', s: deptStyle }, { v: '', s: deptStyle },
+      { v: '', s: deptStyle }, { v: '', s: deptStyle }, { v: '', s: deptStyle }
+    ]);
+  
+    // Row 2 - Workshop title
+    wsData.push([
+      { v: `Workshop: ${workshop.title}`, s: titleStyle },
+      { v: '', s: titleStyle }, { v: '', s: titleStyle }, { v: '', s: titleStyle },
+      { v: '', s: titleStyle }, { v: '', s: titleStyle }, { v: '', s: titleStyle },
+      { v: '', s: titleStyle }, { v: '', s: titleStyle }, { v: '', s: titleStyle }
+    ]);
+  
+    // Row 3 - Topic | Speaker
+    wsData.push([
+      { v: `Topic: ${workshop.topic}`, s: infoStyle },
+      { v: '', s: infoStyle }, { v: '', s: infoStyle }, { v: '', s: infoStyle }, { v: '', s: infoStyle },
+      { v: `Speaker: ${workshop.speaker}`, s: infoStyle },
+      { v: '', s: infoStyle }, { v: '', s: infoStyle }, { v: '', s: infoStyle }, { v: '', s: infoStyle }
+    ]);
+  
+    // Row 4 - Date | Workshop ID
+    const dateStr = workshop.date
+      ? new Date(workshop.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+      : 'N/A';
+    wsData.push([
+      { v: `Date: ${dateStr}`, s: infoStyle },
+      { v: '', s: infoStyle }, { v: '', s: infoStyle }, { v: '', s: infoStyle }, { v: '', s: infoStyle },
+      { v: `Workshop ID: ${workshop.workshop_id}`, s: infoStyle },
+      { v: '', s: infoStyle }, { v: '', s: infoStyle }, { v: '', s: infoStyle }, { v: '', s: infoStyle }
+    ]);
+  
+    // Row 5 - Total verified
+    wsData.push([
+      { v: `Total Verified Students: ${verifiedLogs.length}`, s: statsStyle },
+      { v: '', s: statsStyle }, { v: '', s: statsStyle }, { v: '', s: statsStyle },
+      { v: '', s: statsStyle }, { v: '', s: statsStyle }, { v: '', s: statsStyle },
+      { v: '', s: statsStyle }, { v: '', s: statsStyle }, { v: '', s: statsStyle }
+    ]);
+  
+    // Row 6 - Empty spacer
+    wsData.push([{ v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }]);
+  
+    // Row 7 - Headers
+    const headers = ['Sr. No', 'Student Name', 'Roll Number', 'Year', 'Department', 'Entry Time', 'Exit Time', 'Duration (mins)', 'Verified', 'Signature'];
+    wsData.push(headers.map(h => ({ v: h, s: headerStyle })));
+  
+    // Data rows
+    verifiedLogs.forEach((log, index) => {
+      const style = index % 2 === 0 ? evenRowStyle() : oddRowStyle();
+      const formatTime = (date) => date
+        ? new Date(date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+        : 'N/A';
+  
+      wsData.push([
+        { v: index + 1, s: style },
+        { v: (log.student_id && log.student_id.name) ? log.student_id.name : 'N/A', s: { ...style, alignment: { horizontal: 'left', vertical: 'center' } } },
+        { v: (log.student_id && log.student_id.roll_number) ? log.student_id.roll_number : 'N/A', s: style },
+        { v: `Year ${(log.student_id && log.student_id.year) ? log.student_id.year : 'N/A'}`, s: style },
+        { v: (log.student_id && log.student_id.department) ? log.student_id.department : 'N/A', s: style },
+        { v: formatTime(log.entry_time), s: style },
+        { v: formatTime(log.exit_time), s: style },
+        { v: log.total_duration_minutes || 0, s: style },
+        { v: '✓ Verified', s: verifiedStyle },
+        { v: '', s: style }
+      ]);
+    });
+  
+    // Footer
+    wsData.push([
+      { v: `Digitally validated via WorkShield QR System | Workshop ID: ${workshop.workshop_id} | Generated: ${new Date().toLocaleString('en-IN')}`, s: footerStyle },
+      { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }
+    ]);
+    wsData.push([
+      { v: 'Note: Students must sign in the Signature column upon verification of their attendance.', s: noteStyle },
+      { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }
+    ]);
+  
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+  
+    // Column widths
+    ws['!cols'] = [
+      { wch: 6 }, { wch: 25 }, { wch: 15 }, { wch: 8 },
+      { wch: 22 }, { wch: 18 }, { wch: 18 }, { wch: 14 },
+      { wch: 12 }, { wch: 20 }
+    ];
+  
+    // Row heights
+    ws['!rows'] = [
+      { hpt: 30 }, { hpt: 22 }, { hpt: 18 }, { hpt: 18 },
+      { hpt: 18 }, { hpt: 8 }, { hpt: 20 },
+      ...verifiedLogs.map(() => ({ hpt: 18 })),
+      { hpt: 16 }, { hpt: 16 }
+    ];
+  
+    // Merges
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },  // Dept header
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },  // Title
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 4 } },  // Topic
+      { s: { r: 2, c: 5 }, e: { r: 2, c: 9 } },  // Speaker
+      { s: { r: 3, c: 0 }, e: { r: 3, c: 4 } },  // Date
+      { s: { r: 3, c: 5 }, e: { r: 3, c: 9 } },  // Workshop ID
+      { s: { r: 4, c: 0 }, e: { r: 4, c: 9 } },  // Total verified
+      { s: { r: 5, c: 0 }, e: { r: 5, c: 9 } },  // Spacer
+      { s: { r: wsData.length - 2, c: 0 }, e: { r: wsData.length - 2, c: 9 } }, // Footer
+      { s: { r: wsData.length - 1, c: 0 }, e: { r: wsData.length - 1, c: 9 } }, // Note
+    ];
+  
+    XLSX.utils.book_append_sheet(wb, ws, 'Attendance Sheet');
+    XLSX.writeFile(wb, `attendance_${workshop.workshop_id}.xlsx`);
+    return true;
+  };
   const verified = attendance.filter(a => a.verified_status).length;
   const timerPct = (timeLeft / QR_ROTATION) * 100;
 

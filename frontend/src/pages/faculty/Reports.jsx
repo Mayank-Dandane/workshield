@@ -7,7 +7,7 @@ import { getFeedbackAnalytics } from '../../api/feedback.api';
 import toast from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx-js-style';
 import {
   FileText, Download, BarChart2,
   BookOpen, Calendar, Users, Star
@@ -147,32 +147,203 @@ const generateReportPDF = (workshop, attendanceLogs, feedbackStats) => {
   doc.save('report_' + workshop.workshop_id + '.pdf');
 };
 
+// Replace the entire generateExcel function in Reports.jsx
+// Also change: import * as XLSX from 'xlsx'; → import XLSX from 'xlsx-js-style';
+
 const generateExcel = (workshop, logs) => {
   const verifiedLogs = logs.filter(l => l.verified_status);
   if (!verifiedLogs.length) return false;
 
-  const data = verifiedLogs.map((log, i) => ({
-    'Sr. No': i + 1,
-    'Student Name': (log.student_id && log.student_id.name) ? log.student_id.name : 'N/A',
-    'Roll Number': (log.student_id && log.student_id.roll_number) ? log.student_id.roll_number : 'N/A',
-    'Year': 'Year ' + ((log.student_id && log.student_id.year) ? log.student_id.year : 'N/A'),
-    'Department': (log.student_id && log.student_id.department) ? log.student_id.department : 'N/A',
-    'Entry Time': log.entry_time ? new Date(log.entry_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
-    'Exit Time': log.exit_time ? new Date(log.exit_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
-    'Duration (mins)': log.total_duration_minutes || 0,
-    'Verified': 'Verified',
-    'Signature': ''
-  }));
+  const wb = XLSX.utils.book_new();
+  const wsData = [];
 
-  const ws = XLSX.utils.json_to_sheet(data);
+  // Styles
+  const deptStyle = {
+    font: { name: 'Arial', bold: true, sz: 14, color: { rgb: 'FFFFFF' } },
+    fill: { fgColor: { rgb: '1F3864' } },
+    alignment: { horizontal: 'center', vertical: 'center' }
+  };
+  const titleStyle = {
+    font: { name: 'Arial', bold: true, sz: 12, color: { rgb: '1F3864' } },
+    fill: { fgColor: { rgb: 'D6E4F0' } },
+    alignment: { horizontal: 'center', vertical: 'center' }
+  };
+  const infoStyle = {
+    font: { name: 'Arial', sz: 10 },
+    alignment: { horizontal: 'left', vertical: 'center' }
+  };
+  const statsStyle = {
+    font: { name: 'Arial', bold: true, sz: 10, color: { rgb: '375623' } },
+    fill: { fgColor: { rgb: 'E2EFDA' } },
+    alignment: { horizontal: 'center', vertical: 'center' }
+  };
+  const headerStyle = {
+    font: { name: 'Arial', bold: true, sz: 10, color: { rgb: 'FFFFFF' } },
+    fill: { fgColor: { rgb: '2E75B6' } },
+    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+    border: {
+      top: { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left: { style: 'thin', color: { rgb: '000000' } },
+      right: { style: 'thin', color: { rgb: '000000' } }
+    }
+  };
+  const evenRowStyle = (colNum) => ({
+    font: { name: 'Arial', sz: 10 },
+    fill: { fgColor: { rgb: 'FFFFFF' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'thin', color: { rgb: 'D0D0D0' } },
+      bottom: { style: 'thin', color: { rgb: 'D0D0D0' } },
+      left: { style: 'thin', color: { rgb: 'D0D0D0' } },
+      right: { style: 'thin', color: { rgb: 'D0D0D0' } }
+    }
+  });
+  const oddRowStyle = () => ({
+    font: { name: 'Arial', sz: 10 },
+    fill: { fgColor: { rgb: 'F2F7FC' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'thin', color: { rgb: 'D0D0D0' } },
+      bottom: { style: 'thin', color: { rgb: 'D0D0D0' } },
+      left: { style: 'thin', color: { rgb: 'D0D0D0' } },
+      right: { style: 'thin', color: { rgb: 'D0D0D0' } }
+    }
+  });
+  const verifiedStyle = {
+    font: { name: 'Arial', bold: true, sz: 10, color: { rgb: '00B050' } },
+    fill: { fgColor: { rgb: 'FFFFFF' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'thin', color: { rgb: 'D0D0D0' } },
+      bottom: { style: 'thin', color: { rgb: 'D0D0D0' } },
+      left: { style: 'thin', color: { rgb: 'D0D0D0' } },
+      right: { style: 'thin', color: { rgb: 'D0D0D0' } }
+    }
+  };
+  const footerStyle = {
+    font: { name: 'Arial', italic: true, sz: 8, color: { rgb: '808080' } },
+    alignment: { horizontal: 'center', vertical: 'center' }
+  };
+  const noteStyle = {
+    font: { name: 'Arial', bold: true, sz: 9, color: { rgb: 'FF0000' } },
+    alignment: { horizontal: 'center', vertical: 'center' }
+  };
+
+  // Row 1 - Dept header
+  wsData.push([
+    { v: "DEPARTMENT OF AUTOMATION & ROBOTICS — JSPM's RSCOE", s: deptStyle },
+    { v: '', s: deptStyle }, { v: '', s: deptStyle }, { v: '', s: deptStyle },
+    { v: '', s: deptStyle }, { v: '', s: deptStyle }, { v: '', s: deptStyle },
+    { v: '', s: deptStyle }, { v: '', s: deptStyle }, { v: '', s: deptStyle }
+  ]);
+
+  // Row 2 - Workshop title
+  wsData.push([
+    { v: `Workshop: ${workshop.title}`, s: titleStyle },
+    { v: '', s: titleStyle }, { v: '', s: titleStyle }, { v: '', s: titleStyle },
+    { v: '', s: titleStyle }, { v: '', s: titleStyle }, { v: '', s: titleStyle },
+    { v: '', s: titleStyle }, { v: '', s: titleStyle }, { v: '', s: titleStyle }
+  ]);
+
+  // Row 3 - Topic | Speaker
+  wsData.push([
+    { v: `Topic: ${workshop.topic}`, s: infoStyle },
+    { v: '', s: infoStyle }, { v: '', s: infoStyle }, { v: '', s: infoStyle }, { v: '', s: infoStyle },
+    { v: `Speaker: ${workshop.speaker}`, s: infoStyle },
+    { v: '', s: infoStyle }, { v: '', s: infoStyle }, { v: '', s: infoStyle }, { v: '', s: infoStyle }
+  ]);
+
+  // Row 4 - Date | Workshop ID
+  const dateStr = workshop.date
+    ? new Date(workshop.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+    : 'N/A';
+  wsData.push([
+    { v: `Date: ${dateStr}`, s: infoStyle },
+    { v: '', s: infoStyle }, { v: '', s: infoStyle }, { v: '', s: infoStyle }, { v: '', s: infoStyle },
+    { v: `Workshop ID: ${workshop.workshop_id}`, s: infoStyle },
+    { v: '', s: infoStyle }, { v: '', s: infoStyle }, { v: '', s: infoStyle }, { v: '', s: infoStyle }
+  ]);
+
+  // Row 5 - Total verified
+  wsData.push([
+    { v: `Total Verified Students: ${verifiedLogs.length}`, s: statsStyle },
+    { v: '', s: statsStyle }, { v: '', s: statsStyle }, { v: '', s: statsStyle },
+    { v: '', s: statsStyle }, { v: '', s: statsStyle }, { v: '', s: statsStyle },
+    { v: '', s: statsStyle }, { v: '', s: statsStyle }, { v: '', s: statsStyle }
+  ]);
+
+  // Row 6 - Empty spacer
+  wsData.push([{ v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }]);
+
+  // Row 7 - Headers
+  const headers = ['Sr. No', 'Student Name', 'Roll Number', 'Year', 'Department', 'Entry Time', 'Exit Time', 'Duration (mins)', 'Verified', 'Signature'];
+  wsData.push(headers.map(h => ({ v: h, s: headerStyle })));
+
+  // Data rows
+  verifiedLogs.forEach((log, index) => {
+    const style = index % 2 === 0 ? evenRowStyle() : oddRowStyle();
+    const formatTime = (date) => date
+      ? new Date(date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+      : 'N/A';
+
+    wsData.push([
+      { v: index + 1, s: style },
+      { v: (log.student_id && log.student_id.name) ? log.student_id.name : 'N/A', s: { ...style, alignment: { horizontal: 'left', vertical: 'center' } } },
+      { v: (log.student_id && log.student_id.roll_number) ? log.student_id.roll_number : 'N/A', s: style },
+      { v: `Year ${(log.student_id && log.student_id.year) ? log.student_id.year : 'N/A'}`, s: style },
+      { v: (log.student_id && log.student_id.department) ? log.student_id.department : 'N/A', s: style },
+      { v: formatTime(log.entry_time), s: style },
+      { v: formatTime(log.exit_time), s: style },
+      { v: log.total_duration_minutes || 0, s: style },
+      { v: '✓ Verified', s: verifiedStyle },
+      { v: '', s: style }
+    ]);
+  });
+
+  // Footer
+  wsData.push([
+    { v: `Digitally validated via WorkShield QR System | Workshop ID: ${workshop.workshop_id} | Generated: ${new Date().toLocaleString('en-IN')}`, s: footerStyle },
+    { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }
+  ]);
+  wsData.push([
+    { v: 'Note: Students must sign in the Signature column upon verification of their attendance.', s: noteStyle },
+    { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }, { v: '' }
+  ]);
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Column widths
   ws['!cols'] = [
     { wch: 6 }, { wch: 25 }, { wch: 15 }, { wch: 8 },
-    { wch: 20 }, { wch: 18 }, { wch: 18 }, { wch: 12 },
+    { wch: 22 }, { wch: 18 }, { wch: 18 }, { wch: 14 },
     { wch: 12 }, { wch: 20 }
   ];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
-  XLSX.writeFile(wb, 'attendance_' + workshop.workshop_id + '.xlsx');
+
+  // Row heights
+  ws['!rows'] = [
+    { hpt: 30 }, { hpt: 22 }, { hpt: 18 }, { hpt: 18 },
+    { hpt: 18 }, { hpt: 8 }, { hpt: 20 },
+    ...verifiedLogs.map(() => ({ hpt: 18 })),
+    { hpt: 16 }, { hpt: 16 }
+  ];
+
+  // Merges
+  ws['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },  // Dept header
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },  // Title
+    { s: { r: 2, c: 0 }, e: { r: 2, c: 4 } },  // Topic
+    { s: { r: 2, c: 5 }, e: { r: 2, c: 9 } },  // Speaker
+    { s: { r: 3, c: 0 }, e: { r: 3, c: 4 } },  // Date
+    { s: { r: 3, c: 5 }, e: { r: 3, c: 9 } },  // Workshop ID
+    { s: { r: 4, c: 0 }, e: { r: 4, c: 9 } },  // Total verified
+    { s: { r: 5, c: 0 }, e: { r: 5, c: 9 } },  // Spacer
+    { s: { r: wsData.length - 2, c: 0 }, e: { r: wsData.length - 2, c: 9 } }, // Footer
+    { s: { r: wsData.length - 1, c: 0 }, e: { r: wsData.length - 1, c: 9 } }, // Note
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Attendance Sheet');
+  XLSX.writeFile(wb, `attendance_${workshop.workshop_id}.xlsx`);
   return true;
 };
 

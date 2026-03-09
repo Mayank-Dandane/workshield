@@ -88,7 +88,7 @@ const scanQR = async (req, res) => {
     if (!validation.valid) {
       return sendError(res, 400, validation.reason);
     }
-
+    console.log('[scan] validation:', JSON.stringify(validation));
     const scanType = validation.type; // entry | exit | random
     const now = new Date();
 

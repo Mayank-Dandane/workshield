@@ -21,12 +21,12 @@ API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
+      const url = error.config?.url || '';
+      const isLoginRoute = url.includes('/auth/');
+      if (!isLoginRoute) {
+        window.location.href = '/login';
+      }
+    }}
 );
 
 export default API;

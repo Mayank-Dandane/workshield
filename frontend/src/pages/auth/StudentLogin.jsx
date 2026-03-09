@@ -24,6 +24,7 @@ export default function StudentLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!form.email.endsWith('@jspmrscoe.edu.in')) {
       toast.error('Email must end with @jspmrscoe.edu.in');
       return;
