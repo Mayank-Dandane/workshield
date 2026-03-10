@@ -24,7 +24,7 @@ export default function ScanQR() {
   console.log('workshopId:', workshopId);
 
   useEffect(() => {
-    if (token && workshopId) {
+    if (token && workshopId && status === 'idle') {
       handleScan(token, workshopId);
     }
   }, []);
@@ -128,8 +128,8 @@ export default function ScanQR() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Status</span>
-                  <span className={`font-semibold ${result.verified_status ? 'text-emerald-600' : 'text-amber-500'}`}>
-                           {result.verified_status ? '✅ Verified' : '⏳ Pending Verification'}
+                  <span className={`font-semibold ${result.verified ? 'text-emerald-600' : 'text-amber-500'}`}>
+                  {result.verified ? '✅ Verified' : '⏳ Pending Verification'}
                     </span>
                 </div>
               </div>
@@ -142,7 +142,7 @@ export default function ScanQR() {
               >
                 Go to Dashboard
               </button>
-              {result.verified_status && (
+              {result.verified && (
   <button
     onClick={() => navigate('/student/feedback')}
     className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors"
