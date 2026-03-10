@@ -151,8 +151,7 @@ const verifyCertificate = async (req, res) => {
       certificate_id: req.params.certificateId
     })
       .populate('student_id', 'name roll_number department year')
-      .populate('workshop_id', 'title topic speaker date workshop_id');
-
+      .populate('workshop_id', 'title topic speakers date workshop_id');
     if (!certificate) {
       return sendError(res, 404, 'Certificate not found or invalid ID');
     }
@@ -195,7 +194,7 @@ const getMyCertificates = async (req, res) => {
   try {
     const certificates = await Certificate.find({
       student_id: req.user._id
-    }).populate('workshop_id', 'title date workshop_id topic speaker')
+    }).populate('workshop_id', 'title date workshop_id topic speakers')
       .populate('student_id', 'name roll_number department');
 
     return sendSuccess(res, 200, 'Your certificates', {
