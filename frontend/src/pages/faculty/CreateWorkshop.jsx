@@ -3,19 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import FacultyLayout from '../../components/faculty/FacultyLayout';
 import { createWorkshop } from '../../api/workshop.api';
 import toast from 'react-hot-toast';
-import { PlusCircle, ArrowLeft, BookOpen } from 'lucide-react';
+import { PlusCircle, ArrowLeft, BookOpen, X, UserPlus } from 'lucide-react';
 
-// ── Outside component to prevent re-render focus loss ──────────
 const InputField = ({ label, name, type = 'text', placeholder, required = true, value, onChange }) => (
   <div>
     <label className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
     <input
-      type={type}
-      name={name}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      required={required}
+      type={type} name={name} value={value} onChange={onChange}
+      placeholder={placeholder} required={required}
       className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
     />
   </div>
@@ -27,24 +22,39 @@ export default function CreateWorkshop() {
   const [form, setForm] = useState({
     title: '',
     topic: '',
-    speaker: '',
     date: '',
     start_time: '',
     end_time: '',
     min_duration_minutes: 60,
     random_check_enabled: false
   });
+  const [speakers, setSpeakers] = useState(['']);
 
   const handleChange = (e) => {
     const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setForm({ ...form, [e.target.name]: val });
   };
 
+  const handleSpeakerChange = (index, value) => {
+    const updated = [...speakers];
+    updated[index] = value;
+    setSpeakers(updated);
+  };
+
+  const addSpeaker = () => setSpeakers([...speakers, '']);
+
+  const removeSpeaker = (index) => {
+    if (speakers.length === 1) return;
+    setSpeakers(speakers.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const filteredSpeakers = speakers.map(s => s.trim()).filter(Boolean);
+    if (filteredSpeakers.length === 0) return toast.error('At least one speaker is required');
     setLoading(true);
     try {
-      const res = await createWorkshop(form);
+      const res = await createWorkshop({ ...form, speakers: filteredSpeakers });
       const workshop = res.data.data.workshop;
       toast.success(`Workshop "${workshop.title}" created! ID: ${workshop.workshop_id}`);
       navigate('/faculty/dashboard');
@@ -59,12 +69,8 @@ export default function CreateWorkshop() {
     <FacultyLayout>
       <div className="max-w-2xl mx-auto space-y-6">
 
-        {/* Header */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/faculty/dashboard')}
-            className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
-          >
+          <button onClick={() => navigate('/faculty/dashboard')} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
             <ArrowLeft className="w-5 h-5 text-slate-600" />
           </button>
           <div>
@@ -84,27 +90,46 @@ export default function CreateWorkshop() {
               <h2 className="font-semibold text-slate-800">Workshop Details</h2>
             </div>
             <div className="space-y-4">
-              <InputField
-                label="Workshop Title"
-                name="title"
-                placeholder="e.g. Web Development Bootcamp"
-                value={form.title}
-                onChange={handleChange}
-              />
-              <InputField
-                label="Topic"
-                name="topic"
-                placeholder="e.g. Full Stack with React & Node.js"
-                value={form.topic}
-                onChange={handleChange}
-              />
-              <InputField
-                label="Speaker Name"
-                name="speaker"
-                placeholder="e.g. Dr. Priya Menon"
-                value={form.speaker}
-                onChange={handleChange}
-              />
+              <InputField label="Workshop Title" name="title" placeholder="e.g. Web Development Bootcamp" value={form.title} onChange={handleChange} />
+              <InputField label="Topic" name="topic" placeholder="e.g. Full Stack with React & Node.js" value={form.topic} onChange={handleChange} />
+
+              {/* Speakers */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Speaker(s)
+                </label>
+                <div className="space-y-2">
+                  {speakers.map((speaker, index) => (
+                    <div key={index} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={speaker}
+                        onChange={(e) => handleSpeakerChange(index, e.target.value)}
+                        placeholder={`e.g. Dr. Priya Menon`}
+                        required={index === 0}
+                        className="flex-1 px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      />
+                      {speakers.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeSpeaker(index)}
+                          className="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={addSpeaker}
+                  className="mt-2 flex items-center gap-1.5 text-sm text-indigo-700 hover:text-indigo-900 font-medium transition-colors"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Add Another Speaker
+                </button>
+              </div>
             </div>
           </div>
 
@@ -112,28 +137,10 @@ export default function CreateWorkshop() {
           <div className="p-6 border-b border-slate-50">
             <h2 className="font-semibold text-slate-800 mb-5">Schedule</h2>
             <div className="space-y-4">
-              <InputField
-                label="Date"
-                name="date"
-                type="date"
-                value={form.date}
-                onChange={handleChange}
-              />
+              <InputField label="Date" name="date" type="date" value={form.date} onChange={handleChange} />
               <div className="grid grid-cols-2 gap-4">
-                <InputField
-                  label="Start Time"
-                  name="start_time"
-                  type="time"
-                  value={form.start_time}
-                  onChange={handleChange}
-                />
-                <InputField
-                  label="End Time"
-                  name="end_time"
-                  type="time"
-                  value={form.end_time}
-                  onChange={handleChange}
-                />
+                <InputField label="Start Time" name="start_time" type="time" value={form.start_time} onChange={handleChange} />
+                <InputField label="End Time" name="end_time" type="time" value={form.end_time} onChange={handleChange} />
               </div>
             </div>
           </div>
@@ -143,41 +150,25 @@ export default function CreateWorkshop() {
             <h2 className="font-semibold text-slate-800 mb-5">Attendance Settings</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Minimum Attendance Duration (minutes)
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Minimum Attendance Duration (minutes)</label>
                 <input
-                  type="number"
-                  name="min_duration_minutes"
-                  value={form.min_duration_minutes}
-                  onChange={handleChange}
-                  min="1"
-                  required
+                  type="number" name="min_duration_minutes" value={form.min_duration_minutes}
+                  onChange={handleChange} min="1" required
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                 />
-                <p className="text-xs text-slate-400 mt-1">
-                  Students must attend at least this many minutes to be verified
-                </p>
+                <p className="text-xs text-slate-400 mt-1">Students must attend at least this many minutes to be verified</p>
               </div>
-
-              {/* Random check toggle */}
               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
                 <div>
                   <p className="text-sm font-medium text-slate-700">Enable Random Check</p>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Students must scan a mid-session QR to confirm presence
-                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">Students must scan a mid-session QR to confirm presence</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setForm({ ...form, random_check_enabled: !form.random_check_enabled })}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${
-                    form.random_check_enabled ? 'bg-indigo-600' : 'bg-slate-200'
-                  }`}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${form.random_check_enabled ? 'bg-indigo-600' : 'bg-slate-200'}`}
                 >
-                  <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${
-                    form.random_check_enabled ? 'left-5' : 'left-0.5'
-                  }`} />
+                  <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${form.random_check_enabled ? 'left-5' : 'left-0.5'}`} />
                 </button>
               </div>
             </div>
@@ -186,22 +177,16 @@ export default function CreateWorkshop() {
           {/* Submit */}
           <div className="px-6 pb-6">
             <button
-              type="submit"
-              disabled={loading}
+              type="submit" disabled={loading}
               className="w-full py-3 bg-indigo-800 hover:bg-indigo-900 text-white font-semibold rounded-xl transition-all disabled:opacity-70 flex items-center justify-center gap-2"
             >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              ) : (
-                <>
-                  <PlusCircle className="w-4 h-4" />
-                  Create Workshop
-                </>
-              )}
+              {loading
+                ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                : <><PlusCircle className="w-4 h-4" />Create Workshop</>
+              }
             </button>
           </div>
         </form>
-
       </div>
     </FacultyLayout>
   );

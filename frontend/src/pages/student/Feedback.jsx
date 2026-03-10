@@ -4,11 +4,11 @@ import StudentLayout from '../../components/student/StudentLayout';
 import { submitFeedback, getMyFeedback } from '../../api/feedback.api';
 import { getMyAttendance } from '../../api/attendance.api';
 import toast from 'react-hot-toast';
-import { MessageSquare, Star, CheckCircle, Send } from 'lucide-react';
+import { MessageSquare, Star, CheckCircle, Send, ChevronDown, ChevronUp } from 'lucide-react';
 
 const QUESTIONS = [
   'How was the content quality?',
-  'How was the speaker\'s delivery?',
+  "How was the speaker's delivery?",
   'How useful was this workshop?',
   'How would you rate the organization?'
 ];
@@ -16,19 +16,8 @@ const QUESTIONS = [
 const StarRating = ({ value, onChange }) => (
   <div className="flex gap-1">
     {[1, 2, 3, 4, 5].map((star) => (
-      <button
-        key={star}
-        type="button"
-        onClick={() => onChange(star)}
-        className="transition-transform hover:scale-110"
-      >
-        <Star
-          className={`w-7 h-7 transition-colors ${
-            star <= value
-              ? 'text-amber-400 fill-amber-400'
-              : 'text-slate-200 fill-slate-200'
-          }`}
-        />
+      <button key={star} type="button" onClick={() => onChange(star)} className="transition-transform hover:scale-110">
+        <Star className={`w-7 h-7 transition-colors ${star <= value ? 'text-amber-400 fill-amber-400' : 'text-slate-200 fill-slate-200'}`} />
       </button>
     ))}
   </div>
@@ -44,6 +33,7 @@ export default function Feedback() {
   const [suggestions, setSuggestions] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showAllFeedbacks, setShowAllFeedbacks] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -53,8 +43,19 @@ export default function Feedback() {
           getMyFeedback()
         ]);
         const verified = (attRes.data.data.logs || []).filter(l => l.verified_status);
+        const feedbacks = [...(feedRes.data.data.feedbacks || [])].sort(
+          (a, b) => new Date(b.submitted_at) - new Date(a.submitted_at)
+        );
         setVerifiedLogs(verified);
-        setSubmittedFeedbacks(feedRes.data.data.feedbacks || []);
+        setSubmittedFeedbacks(feedbacks);
+
+        // Auto-select first pending workshop
+        const pending = verified.filter(l =>
+          !feedbacks.some(f => f.workshop_id?._id === l.workshop_id?._id)
+        );
+        if (pending.length > 0) {
+          setSelectedWorkshop(pending[0].workshop_id?._id || '');
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -75,24 +76,14 @@ export default function Feedback() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!selectedWorkshop) return toast.error('Please select a workshop');
     if (ratings.some(r => r.score === 0)) return toast.error('Please rate all questions');
 
     setSubmitting(true);
     try {
-      await submitFeedback({
-        workshop_id: selectedWorkshop,
-        ratings,
-        comments,
-        suggestions
-      });
-
+      await submitFeedback({ workshop_id: selectedWorkshop, ratings, comments, suggestions });
       toast.success('🎉 Feedback submitted! Redirecting to certificates...');
-
-      // Redirect to certificates after 1.5 seconds
       setTimeout(() => navigate('/student/certificates'), 1500);
-
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to submit feedback');
     } finally {
@@ -100,9 +91,8 @@ export default function Feedback() {
     }
   };
 
-  const pendingWorkshops = verifiedLogs.filter(
-    l => !alreadySubmitted(l.workshop_id?._id)
-  );
+  const pendingWorkshops = verifiedLogs.filter(l => !alreadySubmitted(l.workshop_id?._id));
+  const visibleFeedbacks = showAllFeedbacks ? submittedFeedbacks : submittedFeedbacks.slice(0, 3);
 
   if (loading) return (
     <StudentLayout>
@@ -121,19 +111,19 @@ export default function Feedback() {
           <p className="text-sm text-slate-500 mt-0.5">Share your experience to unlock your certificate</p>
         </div>
 
+        {/* Submitted Feedbacks */}
         {submittedFeedbacks.length > 0 && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="p-4 border-b border-slate-50 flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-emerald-600" />
               <h2 className="font-semibold text-slate-800 text-sm">Submitted Feedback</h2>
+              <span className="ml-auto text-xs text-slate-400">{submittedFeedbacks.length} total</span>
             </div>
             <div className="divide-y divide-slate-50">
-              {submittedFeedbacks.map((f) => (
+              {visibleFeedbacks.map((f) => (
                 <div key={f._id} className="p-4 flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-slate-800 text-sm">
-                      {f.workshop_id?.title || 'Workshop'}
-                    </p>
+                    <p className="font-medium text-slate-800 text-sm">{f.workshop_id?.title || 'Workshop'}</p>
                     <p className="text-xs text-slate-400 mt-0.5">
                       Submitted {new Date(f.submitted_at).toLocaleDateString('en-IN')}
                     </p>
@@ -145,16 +135,28 @@ export default function Feedback() {
                 </div>
               ))}
             </div>
+            {submittedFeedbacks.length > 3 && (
+              <div className="border-t border-slate-50">
+                <button
+                  onClick={() => setShowAllFeedbacks(!showAllFeedbacks)}
+                  className="w-full py-3 text-sm font-medium text-indigo-700 hover:bg-indigo-50 transition-colors flex items-center justify-center gap-1.5"
+                >
+                  {showAllFeedbacks
+                    ? <><ChevronUp className="w-4 h-4" /> Show Less</>
+                    : <><ChevronDown className="w-4 h-4" /> Show {submittedFeedbacks.length - 3} More</>
+                  }
+                </button>
+              </div>
+            )}
           </div>
         )}
 
+        {/* Feedback Form */}
         {pendingWorkshops.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center">
             <MessageSquare className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-600 font-medium">No pending feedback</p>
-            <p className="text-slate-400 text-sm mt-1">
-              Attend and get verified in a workshop to submit feedback
-            </p>
+            <p className="text-slate-400 text-sm mt-1">Attend and get verified in a workshop to submit feedback</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -165,9 +167,7 @@ export default function Feedback() {
 
             <div className="p-6 space-y-6">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Select Workshop
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Select Workshop</label>
                 <select
                   value={selectedWorkshop}
                   onChange={(e) => setSelectedWorkshop(e.target.value)}
@@ -188,10 +188,7 @@ export default function Feedback() {
                 {QUESTIONS.map((q, i) => (
                   <div key={i} className="flex items-center justify-between gap-4">
                     <p className="text-sm text-slate-600 flex-1">{q}</p>
-                    <StarRating
-                      value={ratings[i].score}
-                      onChange={(score) => handleRating(i, score)}
-                    />
+                    <StarRating value={ratings[i].score} onChange={(score) => handleRating(i, score)} />
                   </div>
                 ))}
               </div>
@@ -227,14 +224,10 @@ export default function Feedback() {
                 disabled={submitting}
                 className="w-full py-3 bg-blue-800 hover:bg-blue-900 text-white font-semibold rounded-xl transition-all disabled:opacity-70 flex items-center justify-center gap-2"
               >
-                {submitting ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    Submit Feedback
-                  </>
-                )}
+                {submitting
+                  ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  : <><Send className="w-4 h-4" />Submit Feedback</>
+                }
               </button>
             </div>
           </form>

@@ -17,50 +17,35 @@ const workshopSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  speaker: {
-    type: String,
+  speakers: {
+    type: [String],
     required: true,
-    trim: true
+    validate: {
+      validator: (arr) => arr.length > 0,
+      message: 'At least one speaker is required'
+    }
   },
   date: {
     type: Date,
     required: true
   },
-  start_time: {
-    type: String,  // "09:00"
-    required: true
-  },
-  end_time: {
-    type: String,  // "13:00"
-    required: true
-  },
-  min_duration_minutes: {
-    type: Number,
-    required: true,
-    default: 60   // student must attend at least 60 mins
-  },
-  random_check_enabled: {
-    type: Boolean,
-    default: false
-  },
-  qr_seed: {
-    type: String,
-    default: () => uuidv4()  // unique seed for QR encryption
-  },
+  start_time: { type: String, required: true },
+  end_time: { type: String, required: true },
+  min_duration_minutes: { type: Number, required: true, default: 60 },
+  random_check_enabled: { type: Boolean, default: false },
+  qr_seed: { type: String, default: () => uuidv4() },
   status: {
     type: String,
     enum: ['upcoming', 'active', 'completed', 'locked'],
     default: 'upcoming'
   },
-  created_by: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Faculty',
-    required: true
-  },
-  total_registered: {
-    type: Number,
-    default: 0
-  }
+  created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Faculty', required: true },
+  total_registered: { type: Number, default: 0 }
 }, { timestamps: true });
+
+// backward compat virtual — if old docs have speaker string
+workshopSchema.virtual('speaker').get(function () {
+  return this.speakers ? this.speakers.join(', ') : '';
+});
 
 module.exports = mongoose.model('Workshop', workshopSchema);

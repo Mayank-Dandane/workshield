@@ -149,7 +149,7 @@ export default function MyCertificates() {
       const logs = attRes.data.data.logs || [];
       const feedbacks = feedRes.data.data.feedbacks || [];
 
-      setCertificates(certs);
+      setCertificates([...certs].reverse());
 
       const certWorkshopIds = certs.map(c => c.workshop_id?._id);
       const eligible = logs.filter(log =>
