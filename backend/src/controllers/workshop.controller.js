@@ -11,18 +11,17 @@ const createWorkshop = async (req, res) => {
     const {
       title,
       topic,
-      speaker,
+      speakers,
       date,
       start_time,
       end_time,
       min_duration_minutes,
       random_check_enabled
     } = req.body;
-
     const workshop = await Workshop.create({
       title,
       topic,
-      speaker,
+      speakers: Array.isArray(speakers) ? speakers : [speakers],
       date: new Date(date),
       start_time,
       end_time,
