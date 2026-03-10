@@ -140,6 +140,7 @@ if (scanType === 'entry') {
       // Calculate duration
       const duration = getDurationMinutes(log.entry_time, now);
       log.total_duration_minutes = duration;
+      console.log('[exit] duration:', duration, 'min_required:', workshop.min_duration_minutes, 'passes:', duration >= workshop.min_duration_minutes);
 
       // Check if random check is required and passed
       const randomCheckRequired = workshop.random_check_enabled;
