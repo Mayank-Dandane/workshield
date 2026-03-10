@@ -187,7 +187,7 @@ export default function MyCertificates() {
         rollNumber: cert.student_id?.roll_number || '',
         workshopTitle: cert.workshop_id?.title || '',
         workshopTopic: cert.workshop_id?.topic || '',
-        speaker: cert.workshop_id?.speaker || '',
+        speaker: cert.workshop_id?.speakers?.join(', ') || cert.workshop_id?.speaker || '',
         date: cert.workshop_id?.date
           ? new Date(cert.workshop_id.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
           : '',

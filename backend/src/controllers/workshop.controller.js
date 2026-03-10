@@ -18,6 +18,7 @@ const createWorkshop = async (req, res) => {
       min_duration_minutes,
       random_check_enabled
     } = req.body;
+    console.log('[createWorkshop] body:', JSON.stringify(req.body));
     const workshop = await Workshop.create({
       title,
       topic,
