@@ -28,9 +28,9 @@ const validateFacultyLogin = (req, res, next) => {
 
 // ─── Workshop Create Validator ─────────────────────────────────
 const validateWorkshopCreate = (req, res, next) => {
-  const { title, topic, speaker, date, start_time, end_time, min_duration_minutes } = req.body;
+  const { title, topic, speakers, date, start_time, end_time, min_duration_minutes } = req.body;
 
-  if (!title || !topic || !speaker || !date || !start_time || !end_time || !min_duration_minutes) {
+  if (!title || !topic || !speakers || !speakers.length || !date || !start_time || !end_time || !min_duration_minutes) {
     return sendError(res, 400, 'All workshop fields are required');
   }
 
