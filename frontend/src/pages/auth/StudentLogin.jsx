@@ -1,184 +1,116 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { studentLogin } from '../../api/auth.api';
 import toast from 'react-hot-toast';
-import { BookOpen, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, GraduationCap } from 'lucide-react';
 
 export default function StudentLogin() {
-  const navigate = useNavigate();
   const { login } = useAuth();
-
-  const [form, setForm] = useState({ email: '', password: '' });
-  const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [tab, setTab] = useState('email'); // 'email' | 'roll'
+  const [form, setForm] = useState({ email: '', password: '', roll_number: '', dob: '' });
+  const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [domainWarning, setDomainWarning] = useState(false);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
-    if (name === 'email') {
-      setDomainWarning(value.length > 5 && !value.endsWith('@jspmrscoe.edu.in'));
-    }
-  };
+  // ── Where to go after login ──────────────────────────────────
+  // If student was redirected from a scan URL, go back there
+  const from = location.state?.from || '/student/dashboard';
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    e.stopPropagation();
-    if (!form.email.endsWith('@jspmrscoe.edu.in')) {
-      toast.error('Email must end with @jspmrscoe.edu.in');
-      return;
-    }
     setLoading(true);
     try {
-      const res = await studentLogin(form);
-      const { token, user } = res.data.data;
-      login(token, { ...user, role: 'student' });
-      toast.success(`Welcome, ${user.name}!`);
+      const payload = tab === 'email'
+        ? { email: form.email, password: form.password }
+        : { roll_number: form.roll_number, dob: form.dob };
 
-      // Redirect to pending QR URL if present
-      const pendingUrl = sessionStorage.getItem('pendingQR');
-      if (pendingUrl) {
-        sessionStorage.removeItem('pendingQR');
-        window.location.href = pendingUrl;
-      } else {
-        navigate('/student/dashboard');
-      }
+      const res = await studentLogin(payload);
+      const { token, user } = res.data.data;
+      login(token, user);
+      toast.success(`Welcome, ${user.name}!`);
+      navigate(from, { replace: true });
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Login failed');
+      toast.error(err?.response?.data?.message || 'Invalid credentials');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex">
-
-      {/* Left panel */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-900 to-indigo-800 flex-col justify-between p-12">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
-            <BookOpen className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="w-12 h-12 bg-blue-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <GraduationCap className="w-6 h-6 text-white" />
           </div>
-          <span className="text-white font-bold text-lg">WorkShield</span>
+          <h1 className="text-2xl font-bold text-slate-800">Student Login</h1>
+          <p className="text-slate-500 text-sm mt-1">WorkShield — JSPM's RSCOE</p>
         </div>
-        <div>
-          <h1 className="text-4xl font-bold text-white leading-tight">
-            Student Portal
-          </h1>
-          <p className="text-blue-200 mt-4 text-lg leading-relaxed">
-            Scan QR codes, track attendance, and download your certificates — all in one place.
-          </p>
-          <div className="mt-8 space-y-3">
-            {[
-              '📱 Scan QR codes to mark attendance',
-              '✅ Real-time verification status',
-              '⭐ Submit workshop feedback',
-              '🏆 Download digital certificates'
-            ].map((f, i) => (
-              <div key={i} className="flex items-center gap-3 text-blue-100 text-sm">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-300 flex-shrink-0"></div>
-                {f}
-              </div>
-            ))}
-          </div>
-        </div>
-        <p className="text-blue-300 text-xs">
-          © 2026 WorkShield — JSPM's RSCOE | Dept. of Automation & Robotics
-        </p>
-      </div>
 
-      {/* Right panel */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-slate-50">
-        <div className="w-full max-w-md">
-
-          <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 bg-blue-800 rounded-xl flex items-center justify-center">
-              <BookOpen className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-slate-800">WorkShield</span>
-          </div>
-
-          <h2 className="text-2xl font-bold text-slate-800">Student Sign In</h2>
-          <p className="text-slate-500 text-sm mt-1">Enter your college credentials to continue</p>
-
-          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  placeholder="rollno@jspmrscoe.edu.in"
-                  required
-                  className={`w-full pl-10 pr-4 py-3 rounded-xl border bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${
-                    domainWarning
-                      ? 'border-amber-300 focus:ring-amber-400'
-                      : 'border-slate-200 focus:ring-blue-500'
-                  }`}
-                />
-              </div>
-              {domainWarning && (
-                <div className="flex items-center gap-1.5 mt-1.5 text-amber-600 text-xs">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  Must end with @jspmrscoe.edu.in
-                </div>
-              )}
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={form.password}
-                  onChange={handleChange}
-                  placeholder="Your roll number"
-                  required
-                  className="w-full pl-10 pr-12 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              <p className="text-xs text-slate-400 mt-1">Default password is your roll number</p>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-blue-800 hover:bg-blue-900 text-white font-semibold rounded-xl transition-all disabled:opacity-70 flex items-center justify-center gap-2 mt-2"
-            >
-              {loading
-                ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                : 'Sign In'
-              }
+        {/* Tab switcher */}
+        <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-4">
+          {['email', 'roll'].map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${tab === t ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}>
+              {t === 'email' ? 'Email & Password' : 'Roll No & DOB'}
             </button>
-
-            <p className="text-center text-sm text-slate-500">
-              Faculty?{' '}
-              <a href="/faculty/login" className="text-blue-700 font-medium hover:underline">
-                Login here
-              </a>
-            </p>
-          </form>
+          ))}
         </div>
+
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
+          {tab === 'email' ? (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">College Email</label>
+                <input type="email" placeholder="you@jspmrscoe.edu.in" value={form.email}
+                  onChange={e => set('email', e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+                <div className="relative">
+                  <input type={showPwd ? 'text' : 'password'} placeholder="••••••••" value={form.password}
+                    onChange={e => set('password', e.target.value)}
+                    className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <button type="button" onClick={() => setShowPwd(!showPwd)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Roll Number / PRN</label>
+                <input type="text" placeholder="e.g. RBT24AR001" value={form.roll_number}
+                  onChange={e => set('roll_number', e.target.value.toUpperCase())}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Date of Birth</label>
+                <input type="date" value={form.dob}
+                  onChange={e => set('dob', e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+            </>
+          )}
+
+          <button type="submit" disabled={loading}
+            className="w-full py-2.5 bg-blue-800 hover:bg-blue-900 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-70 flex items-center justify-center gap-2">
+            {loading && <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />}
+            {loading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
+
+        <p className="text-center text-xs text-slate-400 mt-4">
+          Faculty?{' '}
+          <a href="/faculty/login" className="text-blue-700 font-medium hover:underline">Login here</a>
+        </p>
       </div>
     </div>
   );

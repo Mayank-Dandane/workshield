@@ -1,8 +1,9 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 export default function ProtectedRoute({ allowedRoles }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -11,17 +12,18 @@ export default function ProtectedRoute({ allowedRoles }) {
   );
 
   if (!user) {
-    // Save QR URL if present so we can redirect after login
-    if (window.location.search.includes('token=')) {
-      sessionStorage.setItem('pendingQR', window.location.href);
-    }
-    return <Navigate to="/login" replace />;
+    // ── Save the full URL they were trying to reach ──────────
+    // e.g. /student/scan?token=xxx&workshop=yyy
+    // After login, StudentLogin will redirect back here
+    const loginPage = allowedRoles?.includes('student') ? '/login' : '/faculty/login';
+    return <Navigate to={loginPage} state={{ from: location.pathname + location.search }} replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return user.role === 'student'
-      ? <Navigate to="/student/dashboard" replace />
-      : <Navigate to="/faculty/dashboard" replace />;
+    // Wrong role — redirect to their own dashboard
+    if (user.role === 'student') return <Navigate to="/student/dashboard" replace />;
+    if (user.role === 'super_admin') return <Navigate to="/hod" replace />;
+    return <Navigate to="/faculty/dashboard" replace />;
   }
 
   return <Outlet />;

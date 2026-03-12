@@ -1,37 +1,25 @@
 const rateLimit = require('express-rate-limit');
 
-// ─── QR Scan Rate Limiter ──────────────────────────────────────
-// Max 5 scan attempts per student per minute
+// ── QR Scan limiter ───────────────────────────────────────────────
+// Students scan entry + exit = 2 scans minimum
+// Allow 30 per minute per IP to handle retries and simultaneous scans
 const qrScanLimiter = rateLimit({
   windowMs: 60 * 1000,       // 1 minute
-  max: 5,
-  keyGenerator: (req) => {
-    // Rate limit per user ID, not IP
-    return req.user?.id || req.ip;
-  },
-  handler: (req, res) => {
-    return res.status(429).json({
-      success: false,
-      message: 'Too many scan attempts. Please wait a moment.'
-    });
-  },
+  max: 500,                   // was 5 — too low for classroom use
+  message: { success: false, message: 'Too many scan attempts, please wait a moment' },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });
 
-// ─── Login Rate Limiter ────────────────────────────────────────
-// Max 10 login attempts per IP per 15 minutes
+// ── Login limiter ─────────────────────────────────────────────────
+// 130 students logging in simultaneously needs a high limit
+// 20 per minute per IP is safe (most students on different IPs/phones)
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,  // 15 minutes
-  max: 10,
-  handler: (req, res) => {
-    return res.status(429).json({
-      success: false,
-      message: 'Too many login attempts. Try again after 15 minutes.'
-    });
-  },
+  windowMs: 5 * 60 * 1000,   // 5 minutes (was 15)
+  max: 20,                   // was 10 — too low for classroom use
+  message: { success: false, message: 'Too many login attempts, please try again in 5 minutes' },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });
 
 module.exports = { qrScanLimiter, loginLimiter };

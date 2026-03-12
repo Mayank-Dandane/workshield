@@ -48,8 +48,7 @@ const studentSchema = new mongoose.Schema({
 // Hash password before saving
 studentSchema.pre('save', async function (next) {
   if (!this.isModified('password_hash')) return next();
-  this.password_hash = await bcrypt.hash(this.password_hash, 12);
-  next();
+  this.password_hash = await bcrypt.hash(this.password_hash, 10);  next();
 });
 
 // Compare password method

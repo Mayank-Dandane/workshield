@@ -158,7 +158,7 @@ export default function FacultyDashboard() {
                             <BookOpen className="w-5 h-5 text-indigo-700" />
                           </div>
                           <div className="min-w-0">
-                            <p className="font-semibold text-slate-800 text-sm truncate">{w.title}</p>
+                            <p className="font-semibold text-slate-800 text-sm truncate">{w.topic}</p>
                             <p className="text-xs text-slate-400 mt-0.5">
                               {new Date(w.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} • {w.start_time} - {w.end_time}
                             </p>

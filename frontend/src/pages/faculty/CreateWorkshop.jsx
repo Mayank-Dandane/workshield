@@ -89,7 +89,7 @@ export default function CreateWorkshop() {
     try {
       const res = await createWorkshop({ ...form, speakers: filteredSpeakers });
       const workshop = res.data.data.workshop;
-      toast.success(`Workshop "${workshop.title}" created! ID: ${workshop.workshop_id}`);
+      toast.success(`Workshop "${workshop.topic}" created! ID: ${workshop.workshop_id}`);
       navigate('/faculty/dashboard');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create workshop');
