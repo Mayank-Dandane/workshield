@@ -49,7 +49,6 @@ export default function Feedback() {
         setVerifiedLogs(verified);
         setSubmittedFeedbacks(feedbacks);
 
-        // Auto-select first pending workshop
         const pending = verified.filter(l =>
           !feedbacks.some(f => f.workshop_id?._id === l.workshop_id?._id)
         );
@@ -123,7 +122,8 @@ export default function Feedback() {
               {visibleFeedbacks.map((f) => (
                 <div key={f._id} className="p-4 flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-slate-800 text-sm">{f.workshop_id?.title || 'Workshop'}</p>
+                    {/* ✅ topic instead of title */}
+                    <p className="font-medium text-slate-800 text-sm">{f.workshop_id?.topic || 'Workshop'}</p>
                     <p className="text-xs text-slate-400 mt-0.5">
                       Submitted {new Date(f.submitted_at).toLocaleDateString('en-IN')}
                     </p>
@@ -177,7 +177,8 @@ export default function Feedback() {
                   <option value="">Choose a workshop...</option>
                   {pendingWorkshops.map((log) => (
                     <option key={log._id} value={log.workshop_id?._id}>
-                      {log.workshop_id?.title}
+                      {/* ✅ topic instead of title */}
+                      {log.workshop_id?.topic}
                     </option>
                   ))}
                 </select>

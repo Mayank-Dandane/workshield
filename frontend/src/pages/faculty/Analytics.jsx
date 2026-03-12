@@ -69,7 +69,7 @@ export default function Analytics() {
             <ArrowLeft className="w-5 h-5 text-slate-600" />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-slate-800">{workshop?.title}</h1>
+            <h1 className="text-xl font-bold text-slate-800">{workshop?.topic}</h1>
             <p className="text-sm text-slate-500">{workshop?.workshop_id} • Analytics</p>
           </div>
         </div>

@@ -87,19 +87,16 @@ const downloadCertificatePDF = (cert) => {
   doc.setTextColor(80, 80, 80);
   doc.text('has successfully participated in the workshop', W / 2, 108, { align: 'center' });
 
+  // ── Only topic now (no separate title) ──────────────────────────
   doc.setFontSize(13);
   doc.setTextColor(26, 58, 107);
   doc.setFont('helvetica', 'bolditalic');
-  doc.text(`"${cert.workshopTitle}"`, W / 2, 118, { align: 'center' });
-
-  doc.setFontSize(10);
-  doc.setTextColor(80, 80, 80);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Topic: ${cert.workshopTopic}`, W / 2, 128, { align: 'center' });
+  doc.text(`"${cert.workshopTopic}"`, W / 2, 121, { align: 'center' });
 
   doc.setFontSize(9.5);
   doc.setTextColor(100, 100, 100);
-  doc.text(`Conducted by ${cert.speaker}   |   Date: ${cert.date}`, W / 2, 137, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Conducted by ${cert.speaker}   |   Date: ${cert.date}`, W / 2, 132, { align: 'center' });
 
   // Footer line
   doc.setDrawColor(220, 220, 220);
@@ -129,11 +126,11 @@ const downloadCertificatePDF = (cert) => {
 };
 
 export default function MyCertificates() {
-  const [certificates, setCertificates] = useState([]);
+  const [certificates, setCertificates]       = useState([]);
   const [eligibleWorkshops, setEligibleWorkshops] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState('');
-  const [downloading, setDownloading] = useState('');
+  const [loading, setLoading]                 = useState(true);
+  const [generating, setGenerating]           = useState('');
+  const [downloading, setDownloading]         = useState('');
 
   useEffect(() => { fetchData(); }, []);
 
@@ -145,8 +142,8 @@ export default function MyCertificates() {
         getMyFeedback()
       ]);
 
-      const certs = certRes.data.data.certificates || [];
-      const logs = attRes.data.data.logs || [];
+      const certs     = certRes.data.data.certificates || [];
+      const logs      = attRes.data.data.logs || [];
       const feedbacks = feedRes.data.data.feedbacks || [];
 
       setCertificates([...certs].reverse());
@@ -183,18 +180,18 @@ export default function MyCertificates() {
     setDownloading(cert.certificate_id);
     try {
       downloadCertificatePDF({
-        studentName: cert.student_id?.name || 'Student',
-        rollNumber: cert.student_id?.roll_number || '',
-        workshopTitle: cert.workshop_id?.title || '',
-        workshopTopic: cert.workshop_id?.topic || '',
-        speaker: cert.workshop_id?.speakers?.join(', ') || cert.workshop_id?.speaker || '',
-        date: cert.workshop_id?.date
+        studentName:   cert.student_id?.name         || 'Student',
+        rollNumber:    cert.student_id?.roll_number  || '',
+        // ── Only topic used now ──────────────────────────────────
+        workshopTopic: cert.workshop_id?.topic       || '',
+        speaker:       cert.workshop_id?.speakers?.join(', ') || cert.workshop_id?.speaker || '',
+        date:          cert.workshop_id?.date
           ? new Date(cert.workshop_id.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
           : '',
-        department: cert.student_id?.department || 'Automation & Robotics',
+        department:    cert.student_id?.department   || 'Automation & Robotics',
         certificateId: cert.certificate_id,
-        verifyURL: `${window.location.origin}/verify/${cert.certificate_id}`,
-        issuedOn: new Date(cert.issue_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+        verifyURL:     `${window.location.origin}/verify/${cert.certificate_id}`,
+        issuedOn:      new Date(cert.issue_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
       });
       toast.success('Certificate downloaded!');
     } catch (err) {
@@ -221,6 +218,7 @@ export default function MyCertificates() {
           <p className="text-sm text-slate-500 mt-0.5">Download your workshop participation certificates</p>
         </div>
 
+        {/* ── Ready to Generate ── */}
         {eligibleWorkshops.length > 0 && (
           <div className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden">
             <div className="p-4 border-b border-amber-50 bg-amber-50 flex items-center gap-2">
@@ -237,9 +235,14 @@ export default function MyCertificates() {
                       <Award className="w-5 h-5 text-amber-600" />
                     </div>
                     <div>
-                      <p className="font-semibold text-slate-800 text-sm">{log.workshop_id?.title}</p>
+                      {/* ── Show topic instead of title ── */}
+                      <p className="font-semibold text-slate-800 text-sm">
+                        {log.workshop_id?.topic || 'Workshop'}
+                      </p>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        {log.workshop_id?.date ? new Date(log.workshop_id.date).toLocaleDateString('en-IN') : 'N/A'}
+                        {log.workshop_id?.date
+                          ? new Date(log.workshop_id.date).toLocaleDateString('en-IN')
+                          : 'N/A'}
                       </p>
                     </div>
                   </div>
@@ -248,9 +251,9 @@ export default function MyCertificates() {
                     disabled={generating === log.workshop_id?._id}
                     className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-70 flex items-center gap-2 flex-shrink-0"
                   >
-                    {generating === log.workshop_id?._id ? (
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    ) : <Award className="w-4 h-4" />}
+                    {generating === log.workshop_id?._id
+                      ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      : <Award className="w-4 h-4" />}
                     Generate
                   </button>
                 </div>
@@ -259,10 +262,13 @@ export default function MyCertificates() {
           </div>
         )}
 
+        {/* ── Issued Certificates ── */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-50 flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-emerald-600" />
-            <h2 className="font-semibold text-slate-800 text-sm">My Certificates ({certificates.length})</h2>
+            <h2 className="font-semibold text-slate-800 text-sm">
+              My Certificates ({certificates.length})
+            </h2>
           </div>
 
           {certificates.length === 0 ? (
@@ -282,7 +288,10 @@ export default function MyCertificates() {
                       <Award className="w-5 h-5 text-emerald-600" />
                     </div>
                     <div>
-                      <p className="font-semibold text-slate-800 text-sm">{cert.workshop_id?.title || 'Workshop'}</p>
+                      {/* ── Show topic instead of title ── */}
+                      <p className="font-semibold text-slate-800 text-sm">
+                        {cert.workshop_id?.topic || 'Workshop'}
+                      </p>
                       <p className="text-xs text-slate-400 mt-0.5">
                         ID: {cert.certificate_id} • Issued {new Date(cert.issue_date).toLocaleDateString('en-IN')}
                       </p>
@@ -303,9 +312,9 @@ export default function MyCertificates() {
                       disabled={downloading === cert.certificate_id}
                       className="px-4 py-2 bg-blue-800 hover:bg-blue-900 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-70 flex items-center gap-2"
                     >
-                      {downloading === cert.certificate_id ? (
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      ) : <Download className="w-4 h-4" />}
+                      {downloading === cert.certificate_id
+                        ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        : <Download className="w-4 h-4" />}
                       Download
                     </button>
                   </div>

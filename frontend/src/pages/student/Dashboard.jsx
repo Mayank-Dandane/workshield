@@ -110,72 +110,20 @@ export default function StudentDashboard() {
 
         {/* ── Stats ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            icon={Calendar}
-            label="Workshops Attended"
-            value={attendance.length}
-            color="text-blue-700"
-            bg="bg-blue-50"
-          />
-          <StatCard
-            icon={CheckCircle}
-            label="Verified"
-            value={verified}
-            color="text-emerald-700"
-            bg="bg-emerald-50"
-          />
-          <StatCard
-            icon={MessageSquare}
-            label="Feedback Given"
-            value={feedback.length}
-            color="text-violet-700"
-            bg="bg-violet-50"
-          />
-          <StatCard
-            icon={Award}
-            label="Certificates"
-            value={certificates.length}
-            color="text-amber-700"
-            bg="bg-amber-50"
-          />
+          <StatCard icon={Calendar} label="Workshops Attended" value={attendance.length} color="text-blue-700" bg="bg-blue-50" />
+          <StatCard icon={CheckCircle} label="Verified" value={verified} color="text-emerald-700" bg="bg-emerald-50" />
+          <StatCard icon={MessageSquare} label="Feedback Given" value={feedback.length} color="text-violet-700" bg="bg-violet-50" />
+          <StatCard icon={Award} label="Certificates" value={certificates.length} color="text-amber-700" bg="bg-amber-50" />
         </div>
 
         {/* ── Quick Actions ── */}
         <div>
           <h2 className="text-base font-semibold text-slate-700 mb-3">Quick Actions</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <ActionCard
-              icon={QrCode}
-              label="Scan QR"
-              desc="Mark your attendance"
-              color="text-blue-700"
-              bg="bg-blue-50"
-              onClick={() => navigate('/student/scan')}
-            />
-            <ActionCard
-              icon={ClipboardList}
-              label="Attendance"
-              desc="View your records"
-              color="text-emerald-700"
-              bg="bg-emerald-50"
-              onClick={() => navigate('/student/attendance')}
-            />
-            <ActionCard
-              icon={MessageSquare}
-              label="Feedback"
-              desc="Rate workshops"
-              color="text-violet-700"
-              bg="bg-violet-50"
-              onClick={() => navigate('/student/feedback')}
-            />
-            <ActionCard
-              icon={Award}
-              label="Certificates"
-              desc="Download yours"
-              color="text-amber-700"
-              bg="bg-amber-50"
-              onClick={() => navigate('/student/certificates')}
-            />
+            <ActionCard icon={QrCode} label="Scan QR" desc="Mark your attendance" color="text-blue-700" bg="bg-blue-50" onClick={() => navigate('/student/scan')} />
+            <ActionCard icon={ClipboardList} label="Attendance" desc="View your records" color="text-emerald-700" bg="bg-emerald-50" onClick={() => navigate('/student/attendance')} />
+            <ActionCard icon={MessageSquare} label="Feedback" desc="Rate workshops" color="text-violet-700" bg="bg-violet-50" onClick={() => navigate('/student/feedback')} />
+            <ActionCard icon={Award} label="Certificates" desc="Download yours" color="text-amber-700" bg="bg-amber-50" onClick={() => navigate('/student/certificates')} />
           </div>
         </div>
 
@@ -190,10 +138,7 @@ export default function StudentDashboard() {
                 </div>
                 <p className="text-slate-600 font-medium">No workshops yet</p>
                 <p className="text-slate-400 text-sm mt-1">Scan a QR code to attend your first workshop!</p>
-                <button
-                  onClick={() => navigate('/student/scan')}
-                  className="mt-4 px-4 py-2 bg-blue-800 text-white rounded-xl text-sm font-medium hover:bg-blue-900 transition-colors"
-                >
+                <button onClick={() => navigate('/student/scan')} className="mt-4 px-4 py-2 bg-blue-800 text-white rounded-xl text-sm font-medium hover:bg-blue-900 transition-colors">
                   Scan QR Now
                 </button>
               </div>
@@ -206,16 +151,14 @@ export default function StudentDashboard() {
                         <Calendar className="w-4 h-4 text-blue-700" />
                       </div>
                       <div>
+                        {/* ✅ topic instead of title */}
                         <p className="font-medium text-slate-800 text-sm">
-                          {log.workshop_id?.title || 'Workshop'}
+                          {log.workshop_id?.topic || 'Workshop'}
                         </p>
                         <p className="text-xs text-slate-400 mt-0.5">
                           {log.workshop_id?.date
-                            ? new Date(log.workshop_id.date).toLocaleDateString('en-IN', {
-                                day: '2-digit', month: 'short', year: 'numeric'
-                              })
-                            : 'N/A'
-                          }
+                            ? new Date(log.workshop_id.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                            : 'N/A'}
                           {log.total_duration_minutes > 0 && ` • ${log.total_duration_minutes} mins`}
                         </p>
                       </div>

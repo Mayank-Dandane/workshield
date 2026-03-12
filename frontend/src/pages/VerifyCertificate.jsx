@@ -115,11 +115,12 @@ export default function VerifyCertificate() {
                     </div>
                     <div>
                       <p className="text-xs text-slate-400">Workshop</p>
+                      {/* ✅ topic is now the main heading; speakers on subtitle */}
                       <p className="font-semibold text-slate-800 text-sm mt-0.5">
-                        {result.workshop?.title}
+                        {result.workshop?.topic}
                       </p>
                       <p className="text-xs text-slate-400">
-                        {result.workshop?.topic} • by {result.workshop?.speaker}
+                        by {result.workshop?.speakers?.join(', ') || result.workshop?.speaker}
                       </p>
                     </div>
                   </div>

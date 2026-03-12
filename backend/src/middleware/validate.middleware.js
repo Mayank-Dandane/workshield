@@ -4,7 +4,7 @@ const { sendError } = require('../utils/response.util');
 const validateStudentLogin = (req, res, next) => {
   const { roll_number, dob, email, password } = req.body;
 
-  const hasRollDOB = roll_number && dob;
+  const hasRollDOB   = roll_number && dob;
   const hasEmailPass = email && password;
 
   if (!hasRollDOB && !hasEmailPass) {
@@ -28,9 +28,10 @@ const validateFacultyLogin = (req, res, next) => {
 
 // ─── Workshop Create Validator ─────────────────────────────────
 const validateWorkshopCreate = (req, res, next) => {
-  const { title, topic, speakers, date, start_time, end_time, min_duration_minutes } = req.body;
+  // ── title removed — topic is now the sole identifier ──
+  const { topic, speakers, date, start_time, end_time, min_duration_minutes } = req.body;
 
-  if (!title || !topic || !speakers || !speakers.length || !date || !start_time || !end_time || !min_duration_minutes) {
+  if (!topic || !speakers || !speakers.length || !date || !start_time || !end_time || !min_duration_minutes) {
     return sendError(res, 400, 'All workshop fields are required');
   }
 

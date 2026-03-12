@@ -3,10 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import FacultyLayout from '../../components/faculty/FacultyLayout';
 import { generateQR, getAttendanceByWorkshop, lockAttendance } from '../../api/attendance.api';
 import { getWorkshopById } from '../../api/workshop.api';
-import { getFeedbackAnalytics } from '../../api/feedback.api';
 import toast from 'react-hot-toast';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import XLSX from 'xlsx-js-style';
 import {
   Radio, RefreshCw, Users, CheckCircle,
@@ -16,123 +13,6 @@ import {
 
 const QR_ROTATION = 25;
 
-const generateReportPDF = (workshop, attendanceLogs, feedbackStats) => {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const W = doc.internal.pageSize.getWidth();
-
-  doc.setFillColor(26, 58, 107);
-  doc.rect(0, 0, W, 28, 'F');
-  doc.setFontSize(16).setTextColor(255, 255, 255).setFont('helvetica', 'bold');
-  doc.text('WORKSHOP REPORT', W / 2, 12, { align: 'center' });
-  doc.setFontSize(8).setFont('helvetica', 'normal');
-  doc.text("JSPM's RSCOE - Dept. of Automation & Robotics", W / 2, 20, { align: 'center' });
-  doc.setFontSize(7).setTextColor(170, 196, 232);
-  doc.text('Workshop ID: ' + workshop.workshop_id + '   |   Generated: ' + new Date().toLocaleString('en-IN'), W / 2, 25, { align: 'center' });
-
-  doc.setFontSize(11).setTextColor(26, 58, 107).setFont('helvetica', 'bold');
-  doc.text('SECTION 1 - WORKSHOP DETAILS', 14, 38);
-  doc.setDrawColor(26, 58, 107).setLineWidth(0.5).line(14, 41, W - 14, 41);
-
-  const details = [
-    ['Workshop ID', workshop.workshop_id || 'N/A'],
-    ['Title', workshop.title || 'N/A'],
-    ['Topic', workshop.topic || 'N/A'],
-    ['Speaker', workshop.speaker || 'N/A'],
-    ['Date', workshop.date ? new Date(workshop.date).toLocaleDateString('en-IN') : 'N/A'],
-    ['Time', (workshop.start_time || '') + ' - ' + (workshop.end_time || '')],
-    ['Min Duration', (workshop.min_duration_minutes || 0) + ' minutes'],
-  ];
-
-  let y = 48;
-  details.forEach(([k, v]) => {
-    doc.setFontSize(9).setTextColor(60, 60, 60).setFont('helvetica', 'bold').text(k + ':', 16, y);
-    doc.setFont('helvetica', 'normal').setTextColor(80, 80, 80).text(String(v), 65, y);
-    y += 8;
-  });
-
-  y += 4;
-  doc.setFontSize(11).setTextColor(26, 58, 107).setFont('helvetica', 'bold');
-  doc.text('SECTION 2 - ATTENDANCE SUMMARY', 14, y);
-  y += 3;
-  doc.setDrawColor(26, 58, 107).setLineWidth(0.5).line(14, y, W - 14, y);
-  y += 7;
-
-  const verifiedCount = attendanceLogs.filter(l => l.verified_status).length;
-  const total = attendanceLogs.length;
-  const pct = total > 0 ? Math.round((verifiedCount / total) * 100) : 0;
-  const avgDur = total > 0 ? Math.round(attendanceLogs.reduce((s, l) => s + (l.total_duration_minutes || 0), 0) / total) : 0;
-
-  [['Total Scanned', total], ['Total Verified', verifiedCount], ['Attendance Rate', pct + '%'], ['Average Duration', avgDur + ' mins']].forEach(([k, v]) => {
-    doc.setFontSize(9).setTextColor(60, 60, 60).setFont('helvetica', 'bold').text(k + ':', 16, y);
-    doc.setFont('helvetica', 'normal').setTextColor(80, 80, 80).text(String(v), 65, y);
-    y += 8;
-  });
-
-  y += 4;
-  doc.setFontSize(11).setTextColor(26, 58, 107).setFont('helvetica', 'bold');
-  doc.text('SECTION 3 - FEEDBACK ANALYSIS', 14, y);
-  y += 3;
-  doc.setDrawColor(26, 58, 107).setLineWidth(0.5).line(14, y, W - 14, y);
-  y += 7;
-
-  doc.setFontSize(9).setTextColor(60, 60, 60).setFont('helvetica', 'bold').text('Total Submissions:', 16, y);
-  doc.setFont('helvetica', 'normal').setTextColor(80, 80, 80).text(String(feedbackStats?.total_submissions || 0), 65, y);
-  y += 8;
-  doc.setFontSize(9).setTextColor(60, 60, 60).setFont('helvetica', 'bold').text('Overall Average:', 16, y);
-  doc.setFont('helvetica', 'normal').setTextColor(80, 80, 80).text((feedbackStats?.overall_average || 0) + ' / 5', 65, y);
-  y += 8;
-
-  if (feedbackStats?.per_question?.length) {
-    autoTable(doc, {
-      startY: y + 4,
-      head: [['Question', 'Avg Score', 'Responses']],
-      body: feedbackStats.per_question.map(q => [q.question || '', (q.average || 0) + '/5', q.total_responses || 0]),
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [26, 58, 107], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [245, 247, 250] },
-      margin: { left: 14, right: 14 }
-    });
-  }
-
-  if (attendanceLogs.length > 0) {
-    doc.addPage();
-    doc.setFontSize(11).setTextColor(26, 58, 107).setFont('helvetica', 'bold');
-    doc.text('SECTION 4 - FULL ATTENDANCE RECORD', 14, 20);
-    doc.setDrawColor(26, 58, 107).setLineWidth(0.5).line(14, 23, W - 14, 23);
-    autoTable(doc, {
-      startY: 28,
-      head: [['#', 'Name', 'Roll No', 'Entry', 'Exit', 'Duration', 'Status']],
-      body: attendanceLogs.map((log, i) => [
-        i + 1,
-        log.student_id?.name || 'N/A',
-        log.student_id?.roll_number || 'N/A',
-        log.entry_time ? new Date(log.entry_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
-        log.exit_time ? new Date(log.exit_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
-        (log.total_duration_minutes || 0) + ' mins',
-        log.verified_status ? 'Verified' : 'Not Verified'
-      ]),
-      styles: { fontSize: 7.5, cellPadding: 2 },
-      headStyles: { fillColor: [26, 58, 107], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [245, 247, 250] },
-      didParseCell: (data) => {
-        if (data.column.index === 6 && data.section === 'body') {
-          data.cell.styles.textColor = data.cell.raw === 'Verified' ? [0, 165, 80] : [204, 0, 0];
-          data.cell.styles.fontStyle = 'bold';
-        }
-      },
-      margin: { left: 14, right: 14 }
-    });
-  }
-
-  const pageCount = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFontSize(7).setTextColor(160, 160, 160).setFont('helvetica', 'normal');
-    doc.text('Generated by WorkShield | Page ' + i + ' of ' + pageCount, W / 2, 290, { align: 'center' });
-  }
-  doc.save('report_' + workshop.workshop_id + '.pdf');
-};
-
 const generateExcel = (workshop, logs) => {
   const verifiedLogs = logs.filter(l => l.verified_status);
   if (!verifiedLogs.length) return false;
@@ -140,24 +20,25 @@ const generateExcel = (workshop, logs) => {
   const wb = XLSX.utils.book_new();
   const wsData = [];
 
-  const deptStyle = { font: { name: 'Arial', bold: true, sz: 14, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '1F3864' } }, alignment: { horizontal: 'center', vertical: 'center' } };
-  const titleStyle = { font: { name: 'Arial', bold: true, sz: 12, color: { rgb: '1F3864' } }, fill: { fgColor: { rgb: 'D6E4F0' } }, alignment: { horizontal: 'center', vertical: 'center' } };
-  const infoStyle = { font: { name: 'Arial', sz: 10 }, alignment: { horizontal: 'left', vertical: 'center' } };
-  const statsStyle = { font: { name: 'Arial', bold: true, sz: 10, color: { rgb: '375623' } }, fill: { fgColor: { rgb: 'E2EFDA' } }, alignment: { horizontal: 'center', vertical: 'center' } };
+  const deptStyle   = { font: { name: 'Arial', bold: true, sz: 14, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '1F3864' } }, alignment: { horizontal: 'center', vertical: 'center' } };
+  const titleStyle  = { font: { name: 'Arial', bold: true, sz: 12, color: { rgb: '1F3864' } }, fill: { fgColor: { rgb: 'D6E4F0' } }, alignment: { horizontal: 'center', vertical: 'center' } };
+  const infoStyle   = { font: { name: 'Arial', sz: 10 }, alignment: { horizontal: 'left', vertical: 'center' } };
+  const statsStyle  = { font: { name: 'Arial', bold: true, sz: 10, color: { rgb: '375623' } }, fill: { fgColor: { rgb: 'E2EFDA' } }, alignment: { horizontal: 'center', vertical: 'center' } };
   const headerStyle = { font: { name: 'Arial', bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '2E75B6' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: { top: { style: 'thin', color: { rgb: '000000' } }, bottom: { style: 'thin', color: { rgb: '000000' } }, left: { style: 'thin', color: { rgb: '000000' } }, right: { style: 'thin', color: { rgb: '000000' } } } };
   const evenRowStyle = () => ({ font: { name: 'Arial', sz: 10 }, fill: { fgColor: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'D0D0D0' } }, bottom: { style: 'thin', color: { rgb: 'D0D0D0' } }, left: { style: 'thin', color: { rgb: 'D0D0D0' } }, right: { style: 'thin', color: { rgb: 'D0D0D0' } } } });
-  const oddRowStyle = () => ({ font: { name: 'Arial', sz: 10 }, fill: { fgColor: { rgb: 'F2F7FC' } }, alignment: { horizontal: 'center', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'D0D0D0' } }, bottom: { style: 'thin', color: { rgb: 'D0D0D0' } }, left: { style: 'thin', color: { rgb: 'D0D0D0' } }, right: { style: 'thin', color: { rgb: 'D0D0D0' } } } });
+  const oddRowStyle  = () => ({ font: { name: 'Arial', sz: 10 }, fill: { fgColor: { rgb: 'F2F7FC' } }, alignment: { horizontal: 'center', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'D0D0D0' } }, bottom: { style: 'thin', color: { rgb: 'D0D0D0' } }, left: { style: 'thin', color: { rgb: 'D0D0D0' } }, right: { style: 'thin', color: { rgb: 'D0D0D0' } } } });
   const verifiedStyle = { font: { name: 'Arial', bold: true, sz: 10, color: { rgb: '00B050' } }, fill: { fgColor: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center' }, border: { top: { style: 'thin', color: { rgb: 'D0D0D0' } }, bottom: { style: 'thin', color: { rgb: 'D0D0D0' } }, left: { style: 'thin', color: { rgb: 'D0D0D0' } }, right: { style: 'thin', color: { rgb: 'D0D0D0' } } } };
   const footerStyle = { font: { name: 'Arial', italic: true, sz: 8, color: { rgb: '808080' } }, alignment: { horizontal: 'center', vertical: 'center' } };
-  const noteStyle = { font: { name: 'Arial', bold: true, sz: 9, color: { rgb: 'FF0000' } }, alignment: { horizontal: 'center', vertical: 'center' } };
+  const noteStyle   = { font: { name: 'Arial', bold: true, sz: 9, color: { rgb: 'FF0000' } }, alignment: { horizontal: 'center', vertical: 'center' } };
   const empty = (s) => ({ v: '', s });
 
   const dateStr = workshop.date ? new Date(workshop.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A';
 
   wsData.push([{ v: "DEPARTMENT OF AUTOMATION & ROBOTICS — JSPM's RSCOE", s: deptStyle }, ...Array(9).fill(empty(deptStyle))]);
-  wsData.push([{ v: `Workshop: ${workshop.title}`, s: titleStyle }, ...Array(9).fill(empty(titleStyle))]);
-  wsData.push([{ v: `Topic: ${workshop.topic}`, s: infoStyle }, ...Array(3).fill(empty(infoStyle)), empty(infoStyle), { v: `Speaker: ${workshop.speaker}`, s: infoStyle }, ...Array(4).fill(empty(infoStyle))]);
-  wsData.push([{ v: `Date: ${dateStr}`, s: infoStyle }, ...Array(3).fill(empty(infoStyle)), empty(infoStyle), { v: `Workshop ID: ${workshop.workshop_id}`, s: infoStyle }, ...Array(4).fill(empty(infoStyle))]);
+  // ✅ topic only — title removed
+  wsData.push([{ v: `Workshop: ${workshop.topic}`, s: titleStyle }, ...Array(9).fill(empty(titleStyle))]);
+  wsData.push([{ v: `Speaker(s): ${workshop.speakers?.join(', ') || workshop.speaker || 'N/A'}`, s: infoStyle }, ...Array(3).fill(empty(infoStyle)), empty(infoStyle), { v: `Date: ${dateStr}`, s: infoStyle }, ...Array(4).fill(empty(infoStyle))]);
+  wsData.push([{ v: `Workshop ID: ${workshop.workshop_id}`, s: infoStyle }, ...Array(3).fill(empty(infoStyle)), empty(infoStyle), { v: `Total Verified: ${verifiedLogs.length}`, s: infoStyle }, ...Array(4).fill(empty(infoStyle))]);
   wsData.push([{ v: `Total Verified Students: ${verifiedLogs.length}`, s: statsStyle }, ...Array(9).fill(empty(statsStyle))]);
   wsData.push(Array(10).fill({ v: '' }));
   wsData.push(['Sr. No', 'Student Name', 'Roll Number', 'Year', 'Department', 'Entry Time', 'Exit Time', 'Duration (mins)', 'Verified', 'Signature'].map(h => ({ v: h, s: headerStyle })));
@@ -303,19 +184,25 @@ export default function LiveSession() {
     }
   };
 
+  // ✅ Downloads .docx from backend (same endpoint as Reports page)
   const handleReport = async () => {
     setReporting(true);
     try {
-      const attRes = await getAttendanceByWorkshop(workshopId);
-      const data = attRes.data?.data;
-      const logs = data?.logs || data?.attendance || data || [];
-      let feedbackStats = {};
-      try {
-        const feedRes = await getFeedbackAnalytics(workshopId);
-        feedbackStats = feedRes.data.data || {};
-      } catch (e) {}
-      generateReportPDF(workshop, Array.isArray(logs) ? logs : [], feedbackStats);
-      toast.success('Report generated!');
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/workshops/${workshopId}/report`,
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      );
+      if (!response.ok) throw new Error('Failed');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${workshop.workshop_id}_Report.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Report downloaded!');
     } catch (err) {
       toast.error('Failed to generate report');
     } finally {
@@ -343,7 +230,8 @@ export default function LiveSession() {
               <ArrowLeft className="w-5 h-5 text-slate-600" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-slate-800">{workshop?.title}</h1>
+              {/* ✅ topic instead of title */}
+              <h1 className="text-xl font-bold text-slate-800">{workshop?.topic}</h1>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${workshop?.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
                   <Radio className="w-3 h-3" />{workshop?.status}

@@ -19,13 +19,16 @@ import LiveSession from './pages/faculty/LiveSession';
 import Reports from './pages/faculty/Reports';
 import Analytics from './pages/faculty/Analytics';
 
+// HOD portal
+import HODPortal from './pages/HOD/HODPortal';
+
 // Public
 import VerifyCertificate from './pages/VerifyCertificate';
 
 // Protected route wrapper
 import ProtectedRoute from './components/common/ProtectedRoute';
 
-// ── Move RootRedirect BEFORE router definition ─────────────────
+// ── RootRedirect — super_admin goes to /hod ────────────────────
 function RootRedirect() {
   const { user, loading } = useAuth();
   if (loading) return (
@@ -35,6 +38,7 @@ function RootRedirect() {
   );
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === 'student') return <Navigate to="/student/dashboard" replace />;
+  if (user.role === 'super_admin') return <Navigate to="/hod" replace />;
   return <Navigate to="/faculty/dashboard" replace />;
 }
 
@@ -44,6 +48,16 @@ export const router = createBrowserRouter([
   { path: '/faculty/login', element: <FacultyLogin /> },
   { path: '/verify/:certificateId', element: <VerifyCertificate /> },
 
+  // ── HOD Portal (super_admin only) ──────────────────────────
+  {
+    path: '/hod',
+    element: <ProtectedRoute allowedRoles={['super_admin']} />,
+    children: [
+      { index: true, element: <HODPortal /> },
+    ]
+  },
+
+  // ── Student routes ─────────────────────────────────────────
   {
     path: '/student',
     element: <ProtectedRoute allowedRoles={['student']} />,
@@ -56,6 +70,7 @@ export const router = createBrowserRouter([
     ]
   },
 
+  // ── Faculty routes ─────────────────────────────────────────
   {
     path: '/faculty',
     element: <ProtectedRoute allowedRoles={['faculty', 'super_admin']} />,

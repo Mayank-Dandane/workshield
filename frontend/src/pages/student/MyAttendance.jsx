@@ -96,8 +96,9 @@ export default function MyAttendance() {
                         <Calendar className="w-5 h-5 text-blue-700" />
                       </div>
                       <div>
+                        {/* ✅ topic instead of title */}
                         <p className="font-semibold text-slate-800 text-sm">
-                          {log.workshop_id?.title || 'Workshop'}
+                          {log.workshop_id?.topic || 'Workshop'}
                         </p>
                         <p className="text-xs text-slate-400 mt-0.5">
                           {log.workshop_id?.date

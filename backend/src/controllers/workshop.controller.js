@@ -9,26 +9,38 @@ const { sendSuccess, sendError } = require('../utils/response.util');
 const createWorkshop = async (req, res) => {
   try {
     const {
-      title,
       topic,
       speakers,
       date,
       start_time,
       end_time,
       min_duration_minutes,
-      random_check_enabled
+      random_check_enabled,
+      // ── New report fields ──
+      venue,
+      industry_name,
+      designation,
+      targeted_year,
+      report_type,
     } = req.body;
+
     console.log('[createWorkshop] body:', JSON.stringify(req.body));
+
     const workshop = await Workshop.create({
-      title,
       topic,
       speakers: Array.isArray(speakers) ? speakers : [speakers],
       date: new Date(date),
       start_time,
       end_time,
-      min_duration_minutes: Number(min_duration_minutes),
-      random_check_enabled: random_check_enabled || false,
-      created_by: req.user._id
+      min_duration_minutes:  Number(min_duration_minutes),
+      random_check_enabled:  random_check_enabled || false,
+      created_by:            req.user._id,
+      // ── New report fields ──
+      venue:         venue        || '',
+      industry_name: industry_name || '',
+      designation:   designation  || '',
+      targeted_year: targeted_year || 'SY',
+      report_type:   report_type  || 'Report on Industry Expert Session',
     });
 
     return sendSuccess(res, 201, 'Workshop created successfully', { workshop });
@@ -48,14 +60,13 @@ const getAllWorkshops = async (req, res) => {
   try {
     let query = {};
 
-    // Faculty only sees their own workshops
     if (req.user.role === 'faculty') {
       query.created_by = req.user._id;
     }
 
     const workshops = await Workshop.find(query)
       .populate('created_by', 'name email')
-      .sort({ date: -1 }); // newest first
+      .sort({ date: -1 });
 
     return sendSuccess(res, 200, 'Workshops fetched', {
       count: workshops.length,
@@ -103,7 +114,6 @@ const updateWorkshop = async (req, res) => {
       return sendError(res, 404, 'Workshop not found');
     }
 
-    // Faculty can only update their own workshops
     if (
       req.user.role === 'faculty' &&
       workshop.created_by.toString() !== req.user._id.toString()
@@ -111,7 +121,6 @@ const updateWorkshop = async (req, res) => {
       return sendError(res, 403, 'Not authorized to update this workshop');
     }
 
-    // Prevent update if workshop is locked
     if (workshop.status === 'locked') {
       return sendError(res, 400, 'Cannot update a locked workshop');
     }
@@ -171,7 +180,6 @@ const updateWorkshopStatus = async (req, res) => {
       return sendError(res, 404, 'Workshop not found');
     }
 
-    // Faculty can only update their own workshops
     if (
       req.user.role === 'faculty' &&
       workshop.created_by.toString() !== req.user._id.toString()
