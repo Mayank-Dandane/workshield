@@ -78,8 +78,8 @@ const generateCertificate = async (req, res) => {
     const { base64, fileName } = await generateCertificatePDF({      
       studentName: student.name,
       rollNumber: student.roll_number,
-      workshopTitle: workshop.title,
-      workshopTopic: workshop.topic,
+      workshopTitle: workshop.topic,
+       workshopTopic: workshop.topic,
       speaker: workshop.speaker,
       date: new Date(workshop.date).toLocaleDateString('en-IN', {
         day: '2-digit', month: 'long', year: 'numeric'
@@ -151,7 +151,7 @@ const verifyCertificate = async (req, res) => {
       certificate_id: req.params.certificateId
     })
       .populate('student_id', 'name roll_number department year')
-      .populate('workshop_id', 'title topic speakers date workshop_id');
+      .populate('workshop_id', 'topic speakers date workshop_id');
     if (!certificate) {
       return sendError(res, 404, 'Certificate not found or invalid ID');
     }
@@ -169,7 +169,6 @@ const verifyCertificate = async (req, res) => {
         year: certificate.student_id.year
       },
       workshop: {
-        title: certificate.workshop_id.title,
         topic: certificate.workshop_id.topic,
         speaker: certificate.workshop_id.speaker,
         date: certificate.workshop_id.date,
