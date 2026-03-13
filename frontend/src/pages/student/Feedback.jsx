@@ -178,7 +178,7 @@ export default function Feedback() {
                   {pendingWorkshops.map((log) => (
                     <option key={log._id} value={log.workshop_id?._id}>
                       {/* ✅ topic instead of title */}
-                      {log.workshop_id?.topic}
+                      {log.workshop_id?.title}
                     </option>
                   ))}
                 </select>

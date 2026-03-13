@@ -110,8 +110,8 @@ const getMyFeedback = async (req, res) => {
     const feedbacks = await Feedback.find({
       student_id: req.user._id
     })
-      .populate('workshop_id', 'title date workshop_id')
-      .sort({ submitted_at: -1 });
+    .populate('workshop_id', 'topic date workshop_id')
+    .sort({ submitted_at: -1 });
 
     return sendSuccess(res, 200, 'Your feedback records', {
       total: feedbacks.length,

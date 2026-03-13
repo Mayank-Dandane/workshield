@@ -212,8 +212,8 @@ const getAttendanceByWorkshop = async (req, res) => {
 const getMyAttendance = async (req, res) => {
   try {
     const logs = await AttendanceLog.find({ student_id: req.user._id })
-      .populate('workshop_id', 'title date status workshop_id')
-      .sort({ createdAt: -1 });
+    .populate('workshop_id', 'topic date status workshop_id')
+    .sort({ createdAt: -1 });
 
     return sendSuccess(res, 200, 'Your attendance records', { total: logs.length, logs });
   } catch (err) {
