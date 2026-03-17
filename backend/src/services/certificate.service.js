@@ -85,11 +85,11 @@ const generateCertificatePDF = async (data) => {
       doc.fontSize(7).fillColor('#555').font('Helvetica')
         .text('HEAD OF DEPARTMENT', doc.page.width - 210, doc.page.height - 46, { width: 130, align: 'center' });
 
-      // Cert info
+      // Cert info — shifted up by 20px to avoid overlapping border
       doc.fontSize(7.5).fillColor('#888').font('Helvetica')
-        .text(`Certificate ID: ${certificateId}`, 50, doc.page.height - 66, { align: 'center', width: W })
-        .text(`Verify at: ${verifyURL}`, 50, doc.page.height - 56, { align: 'center', width: W })
-        .text(`Issued: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`, 50, doc.page.height - 46, { align: 'center', width: W });
+        .text(`Certificate ID: ${certificateId}`, 50, doc.page.height - 86, { align: 'center', width: W })
+        .text(`Verify at: ${verifyURL}`,           50, doc.page.height - 76, { align: 'center', width: W })
+        .text(`Issued: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`, 50, doc.page.height - 66, { align: 'center', width: W });
 
       doc.end();
     } catch (err) {
