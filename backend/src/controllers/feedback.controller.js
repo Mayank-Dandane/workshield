@@ -12,7 +12,7 @@ const { sendSuccess, sendError } = require('../utils/response.util');
 const submitFeedback = async (req, res) => {
   try {
     const studentId = req.user._id;
-    const { workshop_id, ratings, comments, suggestions } = req.body;
+    const { workshop_id, ratings, helped_in, recommend, liked_most, suggestions, additional_comments } = req.body;
 
     // ── Validate required fields ───────────────────────────────
     if (!workshop_id || !ratings || !Array.isArray(ratings) || !ratings.length) {
@@ -81,7 +81,7 @@ const submitFeedback = async (req, res) => {
       workshop_id,
       ratings,
       overall_rating: parseFloat(overall_rating.toFixed(2)),
-      comments: comments || '',
+      liked_most: liked_most || '',
       suggestions: suggestions || ''
     });
 
