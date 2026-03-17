@@ -81,8 +81,11 @@ const submitFeedback = async (req, res) => {
       workshop_id,
       ratings,
       overall_rating: parseFloat(overall_rating.toFixed(2)),
-      liked_most: liked_most || '',
-      suggestions: suggestions || ''
+      helped_in:           helped_in || [],
+      recommend:           recommend || 'Neutral',
+      liked_most:          liked_most || '',
+      suggestions:         suggestions || '',
+      additional_comments: additional_comments || '',
     });
 
     return sendSuccess(res, 201, 'Feedback submitted successfully', {
